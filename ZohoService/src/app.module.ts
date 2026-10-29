@@ -6,9 +6,10 @@ import { MailService } from './mail.service';
 import { AccessGuard, SessionService } from './security';
 import { MailStore } from './store';
 import { ZohoClient } from './zoho';
+import { RebatesController } from './rebates.controller';
 
 @Module({
-  controllers: [AppController],
+  controllers: [AppController, RebatesController],
   providers: [
     AppConfig,
     SessionService,

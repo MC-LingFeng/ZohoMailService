@@ -18,7 +18,8 @@
     "package:win": "npm run build && node scripts/package-exe.mjs --target=win-x64",
     "package:native": "npm run build && node scripts/package-exe.mjs --target=native",
     "start:desktop": "npm run build && node scripts/desktop-entry.cjs",
-    "test": "npm run typecheck -w ZohoWeb && npm run test -w ZohoService",
+    "test:web": "npm run typecheck -w ZohoWeb && node --experimental-strip-types --test ZohoWeb/test/*.test.ts",
+    "test": "npm run test:web && npm run test -w ZohoService",
     "test:docker": "node scripts/smoke-docker.mjs"
   },
   "devDependencies": {

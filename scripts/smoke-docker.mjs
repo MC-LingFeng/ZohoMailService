@@ -124,12 +124,14 @@ try {
     mounts.find((mount) => mount.Destination === '/app/data').RW,
     true,
   );
-  for (const route of ['/', '/mail', '/accounts', '/guide']) {
+  for (const route of ['/', '/mail', '/accounts', '/rebates', '/guide']) {
     const response = await fetch(`${base}${route}`);
     assert.equal(response.status, 200);
     assert.match(await response.text(), /ZoHome/);
   }
   assert.equal((await fetch(`${base}/api/accounts`)).status, 401);
+  assert.equal((await fetch(`${base}/api/rebates`)).status, 401);
+  assert.equal((await fetch(`${base}/api/rebates/options`)).status, 401);
   const cookie = await login();
   const headers = {
     Cookie: cookie,
@@ -160,6 +162,44 @@ try {
     ).status,
     200,
   );
+  const rebateResponse = await fetch(`${base}/api/rebates`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      accountId: 'docker-fixture',
+      siteName: 'Docker rebate fixture',
+      domain: 'cashback.example.com',
+      registeredAt: '2026-01-01',
+      offerName: 'Local test offer',
+      totalRevenue: 100,
+      totalCost: 25,
+      settled: false,
+      settlementCycle: 'Net 30',
+      banned: false,
+      ip: '192.0.2.1',
+    }),
+  });
+  assert.equal(rebateResponse.status, 201);
+  const rebate = await rebateResponse.json();
+  assert.equal(rebate.conversionRate, 25);
+  const bannedResponse = await fetch(`${base}/api/rebates`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      accountId: 'docker-fixture',
+      siteName: 'Docker banned fixture',
+      domain: 'blocked.example.com',
+      registeredAt: '2026-01-01',
+      offerName: 'Banned offer',
+      totalRevenue: 1000,
+      totalCost: 5,
+      settled: true,
+      settlementCycle: 'Net 30',
+      banned: true,
+      ip: '',
+    }),
+  });
+  assert.equal(bannedResponse.status, 201);
   compose(['down']);
   await assert.rejects(
     fetch(`${base}/api/status`, { signal: AbortSignal.timeout(1000) }),
@@ -178,8 +218,39 @@ try {
     await fetch(`${base}/api/accounts`, { headers: { Cookie: secondCookie } })
   ).json();
   assert.equal(second[0].name, 'Persisted across recreation');
+  const persistedRebates = await (
+    await fetch(`${base}/api/rebates`, { headers: { Cookie: secondCookie } })
+  ).json();
+  assert.equal(persistedRebates.total, 2);
+  const savedRebate = persistedRebates.records.find(
+    (item) => item.id === rebate.id,
+  );
+  assert.equal(savedRebate.offerName, 'Local test offer');
+  assert.equal(savedRebate.accountName, 'Persisted across recreation');
+  assert.equal(persistedRebates.summary.totalRevenue, 100);
+  assert.equal(persistedRebates.summary.totalCost, 30);
+  assert.equal(persistedRebates.summary.settledRevenue, 0);
+  assert.equal(persistedRebates.summary.unsettledRevenue, 100);
+  assert.equal(persistedRebates.summary.conversionRate, 30);
+  assert.equal(persistedRebates.comparison[0].conversionRate, 30);
+  assert.equal(persistedRebates.comparison[0].settledRevenue, 0);
+  assert.equal(persistedRebates.comparison[0].unsettledRevenue, 100);
+  assert.equal(
+    persistedRebates.records.find((item) => item.banned).totalRevenue,
+    1000,
+  );
+  const persistedOptions = await (
+    await fetch(`${base}/api/rebates/options`, {
+      headers: { Cookie: secondCookie },
+    })
+  ).json();
+  assert.deepEqual(persistedOptions, {
+    siteNames: ['Docker banned fixture', 'Docker rebate fixture'],
+    domains: ['blocked.example.com', 'cashback.example.com'],
+    offerNames: ['Banned offer', 'Local test offer'],
+  });
   console.log(
-    'Docker smoke passed: image excludes private files; local env, encrypted database, read-only config, SPA/API, stop, and container recreation verified.',
+    'Docker smoke passed: image excludes private files; local env, encrypted database, read-only config, SPA/API, rebate records and totals, stop, and container recreation verified.',
   );
 } finally {
   compose(['down', '--remove-orphans'], true);

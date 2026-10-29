@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   BookOpen,
   Check,
+  ChartNoAxesCombined,
   ChevronDown,
   Clock3,
   Copy,
@@ -26,6 +27,7 @@ const chapters = [
   { id: 'organize', label: '管理账号' },
   { id: 'read', label: '查看邮件' },
   { id: 'send', label: '发送邮件' },
+  { id: 'rebates', label: '记录返利网' },
   { id: 'faq', label: '常见问题' },
 ];
 
@@ -358,7 +360,8 @@ export default function GuidePage() {
                 />
                 <p className="text-xs font-medium text-ink">移除账号前确认</p>
                 <p className="mt-1.5 text-xs leading-6 text-muted">
-                  从 ZoHome 移除连接会清理本地授权，不会注销 Zoho 邮箱。
+                  从 ZoHome 移除连接会清理本地授权和该邮箱的返利网记录，不会注销
+                  Zoho 邮箱。
                 </p>
               </div>
             </div>
@@ -435,6 +438,33 @@ export default function GuidePage() {
               演示模式中的发送仅为模拟。真实模式使用对应账号发送邮件，仍受 Zoho
               的账号额度和服务规则约束。
             </p>
+          </StepSection>
+
+          <StepSection
+            id="rebates"
+            number="05"
+            icon={ChartNoAxesCombined}
+            title="按邮箱记录返利网与收益"
+            description="一条记录关联一个邮箱，可在同一个邮箱下记录多个返利网和 offer。"
+          >
+            <ol className="space-y-3">
+              <Instruction number={1}>
+                进入「返利网」，点击「新增记录」，搜索并选择关联邮箱，填写返利网名称、域名、创建时间和
+                Offer。名称、域名和 Offer
+                可搜索并选择已有值，也可手动输入新值；保存后下次可直接复用。
+              </Instruction>
+              <Instruction number={2}>
+                录入总收益和总成本，填写结款周期、IP，并标记是否结款、是否封户。金额请统一使用同一币种。
+              </Instruction>
+              <Instruction number={3}>
+                保存后可继续编辑或删除。通过邮箱、关键词、结款和封户状态筛选记录，顶部三个图会同步展示匹配邮箱的收益、成本与转化对比。总览中已封户记录只计成本、不计收益；收益图使用浅红色表示未收款，绿色表示已收款，同一邮箱可分段显示两种状态。
+              </Instruction>
+            </ol>
+            <div className="notice">
+              转化按「总成本:总收益」自动约分，并补充三位小数的近似值，例如图表显示
+              4:41 ≈ 1:10.250，表格显示 4:41 ≈ 10.250。成本为零时近似值显示
+              —。整体转化根据汇总金额计算，统计包含筛选后的全部记录，不受明细分页影响；明细保留原始录入金额。
+            </div>
           </StepSection>
 
           <section id="faq" className="panel scroll-mt-24 p-6 md:p-7">

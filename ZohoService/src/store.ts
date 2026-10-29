@@ -1,4 +1,9 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,6 +18,27 @@ import {
   StoredAccount,
   PendingBinding,
 } from './types';
+import {
+  RebateComparison,
+  RebateInput,
+  RebateList,
+  RebateOptions,
+  RebateQuery,
+  RebateRecord,
+  rebateRate,
+} from './rebates.types';
+
+const rebateSelect = `SELECT r.*,
+  json_extract(a.payload,'$.email') AS account_email,
+  json_extract(a.payload,'$.name') AS account_name,
+  json_extract(a.payload,'$.group') AS account_group
+  FROM rebate_registrations r JOIN accounts a ON a.id=r.account_id`;
+
+const rebateMoneyTotals = `
+  TOTAL(CASE WHEN r.banned=0 THEN r.revenue_cents ELSE 0 END) AS revenue_cents,
+  TOTAL(CASE WHEN r.banned=0 AND r.settled=1 THEN r.revenue_cents ELSE 0 END) AS settled_revenue_cents,
+  TOTAL(CASE WHEN r.banned=0 AND r.settled=0 THEN r.revenue_cents ELSE 0 END) AS unsettled_revenue_cents,
+  TOTAL(r.cost_cents) AS cost_cents`;
 
 const chinaDate = (date: Date) =>
   new Intl.DateTimeFormat('en-CA', {
@@ -29,6 +55,9 @@ export class MailStore implements OnModuleDestroy {
     mkdirSync(config.dataDir, { recursive: true, mode: 0o700 });
     const file = join(config.dataDir, `${config.mode}.sqlite`);
     this.db = new DatabaseSync(file);
+    this.db.function('zohome_lower', { deterministic: true }, (value) =>
+      String(value ?? '').toLocaleLowerCase(),
+    );
     chmodSync(file, 0o600);
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
       CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
@@ -36,7 +65,25 @@ export class MailStore implements OnModuleDestroy {
       CREATE TABLE IF NOT EXISTS activity (id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS message_folder ON messages(account_id,folder);
       CREATE TABLE IF NOT EXISTS daily_stats (day TEXT PRIMARY KEY, sent_count INTEGER NOT NULL DEFAULT 0);
-      CREATE TABLE IF NOT EXISTS pending_bindings (state_hash TEXT PRIMARY KEY, payload TEXT NOT NULL, expires_at INTEGER NOT NULL);`);
+      CREATE TABLE IF NOT EXISTS pending_bindings (state_hash TEXT PRIMARY KEY, payload TEXT NOT NULL, expires_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS rebate_registrations (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        site_name TEXT NOT NULL,
+        domain TEXT NOT NULL,
+        registered_at TEXT NOT NULL,
+        offer_name TEXT NOT NULL DEFAULT '',
+        revenue_cents INTEGER NOT NULL DEFAULT 0 CHECK(revenue_cents>=0),
+        cost_cents INTEGER NOT NULL DEFAULT 0 CHECK(cost_cents>=0),
+        settled INTEGER NOT NULL DEFAULT 0 CHECK(settled IN (0,1)),
+        settlement_cycle TEXT NOT NULL DEFAULT '',
+        banned INTEGER NOT NULL DEFAULT 0 CHECK(banned IN (0,1)),
+        ip TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS rebate_account ON rebate_registrations(account_id);
+      CREATE INDEX IF NOT EXISTS rebate_recent ON rebate_registrations(registered_at DESC,created_at DESC,id);`);
     this.cleanupBindings();
     // Migrate existing untrimmed activity from earlier local builds without resetting saved counters.
     const oldCounts = new Map<string, number>();
@@ -125,6 +172,211 @@ export class MailStore implements OnModuleDestroy {
   }
   removeAccount(id: string) {
     this.db.prepare('DELETE FROM accounts WHERE id=?').run(id);
+  }
+  private rebateRecord(row: Record<string, unknown>): RebateRecord {
+    const totalRevenue = Number(row.revenue_cents) / 100;
+    const totalCost = Number(row.cost_cents) / 100;
+    return {
+      id: String(row.id),
+      accountId: String(row.account_id),
+      accountEmail: String(row.account_email),
+      accountName: String(row.account_name || ''),
+      accountGroup: String(row.account_group || ''),
+      siteName: String(row.site_name),
+      domain: String(row.domain),
+      registeredAt: String(row.registered_at),
+      offerName: String(row.offer_name),
+      totalRevenue,
+      totalCost,
+      settled: Boolean(row.settled),
+      settlementCycle: String(row.settlement_cycle),
+      banned: Boolean(row.banned),
+      ip: String(row.ip),
+      conversionRate: rebateRate(totalCost, totalRevenue),
+      createdAt: String(row.created_at),
+      updatedAt: String(row.updated_at),
+    };
+  }
+  private rebate(id: string): RebateRecord | null {
+    const row = this.db.prepare(`${rebateSelect} WHERE r.id=?`).get(id);
+    return row ? this.rebateRecord(row) : null;
+  }
+  rebateOptions(): RebateOptions {
+    const options = (column: 'site_name' | 'domain' | 'offer_name') =>
+      this.db
+        .prepare(
+          `SELECT DISTINCT trim(${column}) AS value FROM rebate_registrations
+           WHERE trim(${column})<>'' ORDER BY value COLLATE NOCASE,value`,
+        )
+        .all()
+        .map((row) => String(row.value));
+    return {
+      siteNames: options('site_name'),
+      domains: options('domain'),
+      offerNames: options('offer_name'),
+    };
+  }
+  rebates(query: RebateQuery): RebateList {
+    const conditions: string[] = [];
+    const parameters: (string | number)[] = [];
+    if (query.accountId) {
+      conditions.push('r.account_id=?');
+      parameters.push(query.accountId);
+    }
+    for (const field of ['settled', 'banned'] as const) {
+      if (query[field] !== 'all') {
+        conditions.push(`r.${field}=?`);
+        parameters.push(Number(query[field] === 'yes'));
+      }
+    }
+    if (query.search) {
+      const fields = [
+        "json_extract(a.payload,'$.email')",
+        "json_extract(a.payload,'$.name')",
+        "json_extract(a.payload,'$.group')",
+        'r.site_name',
+        'r.domain',
+        'r.offer_name',
+        'r.ip',
+        'r.settlement_cycle',
+      ];
+      conditions.push(
+        `(${fields.map((field) => `instr(zohome_lower(${field}),?)>0`).join(' OR ')})`,
+      );
+      parameters.push(...fields.map(() => query.search.toLocaleLowerCase()));
+    }
+    const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
+    const from = ` FROM rebate_registrations r JOIN accounts a ON a.id=r.account_id${where}`;
+    // SQL filters/aggregates the entire matching set; only the requested page is hydrated.
+    // TOTAL avoids SQLite integer-sum overflow with a large imported workspace.
+    const totals = this.db
+      .prepare(
+        `SELECT COUNT(*) AS record_count,
+      COUNT(DISTINCT r.account_id) AS account_count,
+      ${rebateMoneyTotals}${from}`,
+      )
+      .get(...parameters)!;
+    if (
+      !Number.isSafeInteger(Number(totals.revenue_cents)) ||
+      !Number.isSafeInteger(Number(totals.cost_cents))
+    ) {
+      throw new BadRequestException(
+        '汇总金额超出精确计算范围，请按邮箱或关键词缩小筛选范围',
+      );
+    }
+    const total = Number(totals.record_count);
+    const page = Math.min(
+      query.page,
+      Math.max(1, Math.ceil(total / query.pageSize)),
+    );
+    const records = this.db
+      .prepare(
+        `${rebateSelect}${where}
+      ORDER BY r.registered_at DESC,r.created_at DESC,r.id LIMIT ? OFFSET ?`,
+      )
+      .all(...parameters, query.pageSize, (page - 1) * query.pageSize)
+      .map((row) => this.rebateRecord(row));
+    const comparison: RebateComparison[] = this.db
+      .prepare(
+        `SELECT r.account_id,
+      json_extract(a.payload,'$.email') AS account_email,
+      json_extract(a.payload,'$.name') AS account_name,
+      ${rebateMoneyTotals},
+      COUNT(*) AS record_count${from} GROUP BY r.account_id
+      ORDER BY revenue_cents DESC,account_email,r.account_id`,
+      )
+      .all(...parameters)
+      .map((row) => ({
+        accountId: String(row.account_id),
+        accountEmail: String(row.account_email),
+        accountName: String(row.account_name || ''),
+        totalRevenue: Number(row.revenue_cents) / 100,
+        settledRevenue: Number(row.settled_revenue_cents) / 100,
+        unsettledRevenue: Number(row.unsettled_revenue_cents) / 100,
+        totalCost: Number(row.cost_cents) / 100,
+        conversionRate: rebateRate(
+          Number(row.cost_cents),
+          Number(row.revenue_cents),
+        ),
+        recordCount: Number(row.record_count),
+      }));
+    return {
+      records,
+      total,
+      page,
+      pageSize: query.pageSize,
+      summary: {
+        totalRevenue: Number(totals.revenue_cents) / 100,
+        settledRevenue: Number(totals.settled_revenue_cents) / 100,
+        unsettledRevenue: Number(totals.unsettled_revenue_cents) / 100,
+        totalCost: Number(totals.cost_cents) / 100,
+        conversionRate: rebateRate(
+          Number(totals.cost_cents),
+          Number(totals.revenue_cents),
+        ),
+        recordCount: total,
+        accountCount: Number(totals.account_count),
+      },
+      comparison,
+    };
+  }
+  createRebate(input: RebateInput) {
+    if (!this.account(input.accountId))
+      throw new NotFoundException('邮箱账号不存在');
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    this.writeRebate(id, input, now, now);
+    return this.rebate(id)!;
+  }
+  updateRebate(id: string, input: RebateInput) {
+    const previous = this.rebate(id);
+    if (!previous) throw new NotFoundException('返利网记录不存在');
+    if (!this.account(input.accountId))
+      throw new NotFoundException('邮箱账号不存在');
+    this.writeRebate(id, input, previous.createdAt, new Date().toISOString());
+    return this.rebate(id)!;
+  }
+  removeRebate(id: string) {
+    const result = this.db
+      .prepare('DELETE FROM rebate_registrations WHERE id=?')
+      .run(id);
+    if (!result.changes) throw new NotFoundException('返利网记录不存在');
+    return { success: true };
+  }
+  private writeRebate(
+    id: string,
+    input: RebateInput,
+    createdAt: string,
+    updatedAt: string,
+  ) {
+    this.db
+      .prepare(
+        `INSERT INTO rebate_registrations(
+      id,account_id,site_name,domain,registered_at,offer_name,revenue_cents,cost_cents,
+      settled,settlement_cycle,banned,ip,created_at,updated_at
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      account_id=excluded.account_id,site_name=excluded.site_name,domain=excluded.domain,
+      registered_at=excluded.registered_at,offer_name=excluded.offer_name,
+      revenue_cents=excluded.revenue_cents,cost_cents=excluded.cost_cents,
+      settled=excluded.settled,settlement_cycle=excluded.settlement_cycle,
+      banned=excluded.banned,ip=excluded.ip,updated_at=excluded.updated_at`,
+      )
+      .run(
+        id,
+        input.accountId,
+        input.siteName,
+        input.domain,
+        input.registeredAt,
+        input.offerName,
+        Math.round(input.totalRevenue * 100),
+        Math.round(input.totalCost * 100),
+        Number(input.settled),
+        input.settlementCycle,
+        Number(input.banned),
+        input.ip,
+        createdAt,
+        updatedAt,
+      );
   }
   messages(accountId: string, folder: Folder): MailDetail[] {
     return this.db

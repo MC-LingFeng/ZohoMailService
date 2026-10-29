@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   BookOpen,
+  ChartNoAxesCombined,
   CheckCircle2,
   ChevronRight,
   CircleHelp,
@@ -23,6 +24,7 @@ import HomePage from './pages/HomePage';
 import MailPage from './pages/MailPage';
 import AccountsPage from './pages/AccountsPage';
 import GuidePage from './pages/GuidePage';
+import RebatesPage from './pages/RebatesPage';
 import { useWorkspace, WorkspaceProvider } from './workspace';
 import type { AppStatus } from './types';
 
@@ -53,6 +55,7 @@ function Shell() {
     { to: '/', label: '系统首页', icon: Home },
     { to: '/mail', label: '邮件工作台', icon: Inbox },
     { to: '/accounts', label: '邮箱账号', icon: Users },
+    { to: '/rebates', label: '返利网', icon: ChartNoAxesCombined },
     { to: '/guide', label: '使用指南', icon: BookOpen },
   ];
   const current =
@@ -206,6 +209,7 @@ function Shell() {
           <Route path="/" element={<HomePage />} />
           <Route path="/mail" element={<MailPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/rebates" element={<RebatesPage />} />
           <Route path="/guide" element={<GuidePage />} />
           <Route
             path="*"

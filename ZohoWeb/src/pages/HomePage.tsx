@@ -5,6 +5,7 @@ import {
   BookOpen,
   Check,
   CheckCircle2,
+  ChartNoAxesCombined,
   CirclePlus,
   Inbox,
   Mail,
@@ -161,11 +162,17 @@ export default function HomePage() {
               text: '明确发件账号，发送之前再次核对。',
               to: '/mail?compose=1',
             },
+            {
+              icon: ChartNoAxesCombined,
+              title: '邮箱返利记录，集中掌握',
+              text: '记录返利网与 offer，对比收益、成本和转化。',
+              to: '/rebates',
+            },
           ].map(({ icon: Icon, title, text, to }, index) => (
             <Link
               to={to}
               key={title}
-              className={`group flex items-start gap-3.5 py-4 ${index < 2 ? 'border-b border-line-soft' : ''}`}
+              className={`group flex items-start gap-3.5 py-4 ${index < 3 ? 'border-b border-line-soft' : ''}`}
             >
               <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-accent">
                 <Icon size={17} strokeWidth={1.6} />

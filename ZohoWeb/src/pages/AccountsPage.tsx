@@ -543,7 +543,8 @@ export default function AccountsPage() {
               {disconnecting ? (
                 <div>
                   <p className="text-xs leading-7 text-muted">
-                    确定从 ZoHome 移除这个账号？这会清除本地连接和缓存。Zoho
+                    确定从 ZoHome
+                    移除这个账号？这会清除本地连接、缓存和关联的返利网记录。Zoho
                     邮箱及其中的邮件不会被删除。如需彻底撤销授权，可在 Zoho
                     的关联应用中操作。
                   </p>

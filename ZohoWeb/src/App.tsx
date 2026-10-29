@@ -299,7 +299,8 @@ function LoginPage({ onLogin }: { onLogin: () => Promise<void> }) {
             </button>
           </form>
           <p className="mt-6 text-[10px] leading-5 text-subtle">
-            工作区密码由管理员配置，可在 ZohoService/.env 中设置。
+            工作区密码由管理员配置。桌面版请查看控制台显示的
+            zohome.env；源码开发可在 ZohoService/.env 中设置。
           </p>
         </div>
         <p className="mt-6 text-center text-[10px] text-subtle">
@@ -343,7 +344,8 @@ export default function App() {
           <ServerOff size={30} className="mt-8 text-brand-500" />
           <h1 className="mt-4 text-xl font-semibold">等待工作区服务连接</h1>
           <p className="mt-3 text-xs leading-7 text-muted">
-            请确认 ZohoService 已在本机 3001 端口运行。你可以在项目根目录运行{' '}
+            请重新启动
+            ZoHome，并确认控制台显示服务已启动。若使用源码开发，可以在项目根目录运行{' '}
             <code className="rounded bg-surface-hover px-1.5 py-1">
               npm run dev
             </code>{' '}

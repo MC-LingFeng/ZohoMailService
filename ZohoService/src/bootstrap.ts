@@ -17,7 +17,11 @@ export interface AppOptions {
 
 export async function createApp(options: AppOptions = {}) {
   const webRoot = options.webRoot ? resolve(options.webRoot) : undefined;
-  if (webRoot && (!existsSync(join(webRoot, 'index.html')) || !statSync(webRoot).isDirectory())) {
+  if (
+    webRoot &&
+    (!existsSync(join(webRoot, 'index.html')) ||
+      !statSync(webRoot).isDirectory())
+  ) {
     throw new Error('ZoHome 前端资源缺失，请重新解压或下载完整程序');
   }
   // Explicit adapter also avoids Nest dynamically locating a platform inside a bundled executable.
@@ -52,16 +56,26 @@ export async function createApp(options: AppOptions = {}) {
   );
   if (webRoot) {
     // Register before Nest routes, but never let SPA fallback intercept any /api request.
-    const staticFiles = express.static(webRoot, { index: false, dotfiles: 'deny', fallthrough: true });
-    app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-      if (req.path === '/api' || req.path.startsWith('/api/')) return next();
-      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-      staticFiles(req, res, (error?: unknown) => {
-        if (error) return next(error);
-        if (!req.accepts('html') || /\.[^/]+$/.test(req.path)) return next();
-        res.sendFile(join(webRoot, 'index.html'));
-      });
+    const staticFiles = express.static(webRoot, {
+      index: false,
+      dotfiles: 'deny',
+      fallthrough: true,
     });
+    app.use(
+      (
+        req: express.Request,
+        res: express.Response,
+        next: express.NextFunction,
+      ) => {
+        if (req.path === '/api' || req.path.startsWith('/api/')) return next();
+        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+        staticFiles(req, res, (error?: unknown) => {
+          if (error) return next(error);
+          if (!req.accepts('html') || /\.[^/]+$/.test(req.path)) return next();
+          res.sendFile(join(webRoot, 'index.html'));
+        });
+      },
+    );
   }
   if (options.shutdownHooks !== false) app.enableShutdownHooks();
   return app;

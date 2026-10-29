@@ -122,7 +122,10 @@ function Instruction({
 export default function GuidePage() {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
-  const callbackUrl = 'http://localhost:5173/api/auth/zoho/callback';
+  const callbackUrl = new URL(
+    '/api/auth/zoho/callback',
+    window.location.origin,
+  ).toString();
 
   async function copyCallback() {
     try {
@@ -266,8 +269,8 @@ export default function GuidePage() {
                   </p>
                 )}
                 <p>
-                  在 ZohoService
-                  的服务端环境文件中配置以下项目，再重新启动服务：
+                  在服务端环境文件中配置以下项目，再重新启动服务。桌面版使用控制台所显示的
+                  zohome.env，源码开发使用 ZohoService/.env：
                 </p>
                 <dl className="divide-y divide-line-soft rounded-lg border border-line-soft px-3">
                   {[

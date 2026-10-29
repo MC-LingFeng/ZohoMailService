@@ -1,0 +1,33 @@
+services:
+  zohome:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: ${ZOHOME_NODE_IMAGE:-node:22.22.2-bookworm-slim}
+    image: zohome:local
+    user: '${ZOHOME_UID:-1000}:${ZOHOME_GID:-1000}'
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - '${ZOHOME_BIND_HOST:-127.0.0.1}:${ZOHOME_PORT:-3001}:3001'
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3001'
+      WEB_ROOT: /app/web
+      DATA_DIR: /app/data
+      DOTENV_CONFIG_PATH: /app/config/zohome.env
+    volumes:
+      - type: bind
+        source: ${ZOHOME_ENV_FILE:-./ZohoService/.env}
+        target: /app/config/zohome.env
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ZOHOME_DATA_DIR:-./ZohoService/data}
+        target: /app/data
+        bind:
+          create_host_path: false

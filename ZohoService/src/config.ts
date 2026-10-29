@@ -6,10 +6,14 @@ export class AppConfig {
   readonly mode = process.env.APP_MODE || 'demo';
   readonly port = Number(process.env.PORT || 3001);
   readonly host = process.env.HOST || '127.0.0.1';
-  readonly frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  readonly frontendUrl =
+    process.env.FRONTEND_URL ||
+    (process.env.WEB_ROOT
+      ? `http://localhost:${this.port}`
+      : 'http://localhost:5173');
   readonly redirectUri =
     process.env.ZOHO_REDIRECT_URI ||
-    'http://localhost:5173/api/auth/zoho/callback';
+    `${this.frontendUrl.replace(/\/$/, '')}/api/auth/zoho/callback`;
   readonly clientId = process.env.ZOHO_CLIENT_ID || '';
   readonly clientSecret = process.env.ZOHO_CLIENT_SECRET || '';
   readonly password = process.env.APP_PASSWORD || '';

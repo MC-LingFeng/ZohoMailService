@@ -24,6 +24,27 @@ npm run package:win
 
 产物位于 `release/ZoHome-win-x64.exe`。构建要求使用 `.nvmrc` 指定的 **Node.js 22.22.2**；使用该 EXE 的用户不需要安装任何开发工具。打包脚本可在 macOS 上交叉构建 Windows x64 产物，但 macOS 无法执行 Windows EXE，仍需在 Windows 上确认实际运行情况。详细步骤见 [Windows EXE 使用与构建](docs/windows-exe.md)。
 
+## Docker 启动
+
+Docker 方式将网页和 API 放在一个容器中，默认通过 <http://localhost:3001> 访问。宿主机需要 Docker 与 Docker Compose v2，无需安装 Node.js 或 npm。
+
+配置文件和数据库使用宿主机挂载：`ZohoService/.env` 只读挂载，`ZohoService/data` 读写挂载；两者不会打入镜像。**已有 `.env` 时直接使用，勿用示例文件覆盖。** 首次创建时可参考 `docker.env.example`：
+
+```sh
+test -f ZohoService/.env || cp docker.env.example ZohoService/.env
+mkdir -p ZohoService/data
+```
+
+示例默认启用真实模式，首次使用时须先替换 `APP_PASSWORD` 和 `TOKEN_ENCRYPTION_KEY` 的占位值。已有配置保留原密码和密钥。使用默认端口时，配置 `FRONTEND_URL=http://localhost:3001`、`ZOHO_REDIRECT_URI=http://localhost:3001/api/auth/zoho/callback`，并在 Zoho 应用中登记同一回调。也可以通过 `ZOHOME_PORT=5173` 保留已有的 5173 地址和回调。复用真实账号数据库时，应保留原有 `TOKEN_ENCRYPTION_KEY`。
+
+项目根目录的 `.env` 用于保存 Compose 参数，与应用的 `ZohoService/.env` 分开。本次本机部署已保存 `ZOHOME_PORT=5173` 及本机文件权限参数，直接访问 <http://localhost:5173>。独立配置、数据路径及镜像源设置见下方部署文档。
+
+```sh
+docker compose up -d --build
+```
+
+停止使用 `docker compose down`，宿主机的配置与数据库会保留。详细的独立配置、数据路径、Linux 权限及部署说明见 [Docker 使用与持久化](docs/docker.md)。
+
 ## 本地启动
 
 需要 Node.js **22.13 或以上版本**，建议使用 `.nvmrc` 指定的 22.22.2。默认 Node 16 无法运行当前工具链。已安装 nvm 时，在项目根目录运行：

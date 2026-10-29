@@ -1,0 +1,25 @@
+{
+  "name": "zohome",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ZoHome · 多个 Zoho 邮箱，一个工作空间",
+  "workspaces": ["ZohoWeb", "ZohoService"],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n service,web \"npm run start:dev -w ZohoService\" \"npm run dev -w ZohoWeb\"",
+    "dev:web": "npm run dev -w ZohoWeb",
+    "dev:service": "npm run start:dev -w ZohoService",
+    "build": "npm run build -w ZohoService && npm run build -w ZohoWeb",
+    "package:win": "npm run build && node scripts/package-exe.mjs --target=win-x64",
+    "package:native": "npm run build && node scripts/package-exe.mjs --target=native",
+    "start:desktop": "npm run build && node scripts/desktop-entry.cjs",
+    "test": "npm run typecheck -w ZohoWeb && npm run test -w ZohoService"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "esbuild": "^0.25.12",
+    "postject": "^1.0.0-alpha.6"
+  }
+}

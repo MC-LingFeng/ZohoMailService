@@ -14,6 +14,7 @@ const require = createRequire(import.meta.url);
 require('reflect-metadata');
 const { MailStore } = require('../ZohoService/dist/store');
 const { encryptToken } = require('../ZohoService/dist/security');
+const { parse } = require('dotenv');
 await mkdir(join(root, '.runtime'), { recursive: true });
 const work = await mkdtemp(join(root, '.runtime', 'docker-smoke-'));
 const dataDir = join(work, 'data');
@@ -24,10 +25,11 @@ probe.listen(0, '127.0.0.1');
 await once(probe, 'listening');
 const port = probe.address().port;
 await new Promise((done) => probe.close(done));
-const password = randomBytes(24).toString('base64url');
+let password = randomBytes(24).toString('base64url');
 const key = randomBytes(32).toString('hex');
 const publicUrl = `http://localhost:${port}`;
-const config = `APP_MODE=live\nAPP_PASSWORD=${password}\nTOKEN_ENCRYPTION_KEY=${key}\nFRONTEND_URL=${publicUrl}\nZOHO_REDIRECT_URI=${publicUrl}/api/auth/zoho/callback\n`;
+const config = `# 运行模式\nAPP_MODE=live\n# 工作区密码\nAPP_PASSWORD=${password}\n# 令牌加密密钥\nTOKEN_ENCRYPTION_KEY=${key}\n# 网页访问地址\nFRONTEND_URL=${publicUrl}\n# 授权回调地址\nZOHO_REDIRECT_URI=${publicUrl}/api/auth/zoho/callback\n# 自定义配置\nDOCKER_SMOKE_CUSTOM=fixture\n`;
+let expectedConfig = config;
 await writeFile(configFile, config, { mode: 0o600 });
 const storeConfig = {
   mode: 'live',
@@ -118,13 +120,13 @@ try {
   );
   assert.equal(
     mounts.find((mount) => mount.Destination === '/app/config/zohome.env').RW,
-    false,
+    true,
   );
   assert.equal(
     mounts.find((mount) => mount.Destination === '/app/data').RW,
     true,
   );
-  for (const route of ['/', '/mail', '/accounts', '/rebates', '/guide']) {
+  for (const route of ['/', '/mail', '/accounts', '/rebates', '/settings', '/guide']) {
     const response = await fetch(`${base}${route}`);
     assert.equal(response.status, 200);
     assert.match(await response.text(), /ZoHome/);
@@ -132,12 +134,58 @@ try {
   assert.equal((await fetch(`${base}/api/accounts`)).status, 401);
   assert.equal((await fetch(`${base}/api/rebates`)).status, 401);
   assert.equal((await fetch(`${base}/api/rebates/options`)).status, 401);
+  assert.equal((await fetch(`${base}/api/settings`)).status, 401);
   const cookie = await login();
   const headers = {
     Cookie: cookie,
     Origin: publicUrl,
     'Content-Type': 'application/json',
   };
+  const settingsResponse = await fetch(`${base}/api/settings`, { headers });
+  assert.equal(settingsResponse.status, 200);
+  const settings = await settingsResponse.json();
+  assert.equal(settings.restartRequired, false);
+  assert.ok(settings.revision);
+  assert.equal(
+    settings.fields.find((field) => field.key === 'DOCKER_SMOKE_CUSTOM').label,
+    '自定义配置',
+  );
+  for (const name of ['APP_PASSWORD', 'TOKEN_ENCRYPTION_KEY']) {
+    const field = settings.fields.find((entry) => entry.key === name);
+    assert.equal(field.secret, true);
+    assert.equal(field.configured, true);
+    assert.equal(field.value, null);
+  }
+  assert.equal(JSON.stringify(settings).includes(password), false);
+  assert.equal(JSON.stringify(settings).includes(key), false);
+  const nextPassword = randomBytes(24).toString('base64url');
+  const savedSettingsResponse = await fetch(`${base}/api/settings`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({
+      revision: settings.revision,
+      values: { APP_PASSWORD: nextPassword },
+    }),
+  });
+  assert.equal(savedSettingsResponse.status, 200);
+  const savedSettings = await savedSettingsResponse.json();
+  assert.equal(savedSettings.restartRequired, true);
+  assert.equal(
+    savedSettings.fields.find((field) => field.key === 'APP_PASSWORD').value,
+    null,
+  );
+  assert.equal(JSON.stringify(savedSettings).includes(nextPassword), false);
+  assert.equal(JSON.stringify(savedSettings).includes(key), false);
+  expectedConfig = await readFile(configFile, 'utf8');
+  const savedConfig = parse(expectedConfig);
+  assert.equal(savedConfig.APP_PASSWORD, nextPassword);
+  assert.equal(savedConfig.TOKEN_ENCRYPTION_KEY, key);
+  assert.deepEqual({ ...savedConfig, APP_PASSWORD: password }, parse(config));
+  assert.deepEqual(
+    expectedConfig.split('\n').filter((line) => line.startsWith('#')),
+    config.split('\n').filter((line) => line.startsWith('#')),
+  );
+  password = nextPassword;
   const accounts = await (
     await fetch(`${base}/api/accounts`, { headers })
   ).json();
@@ -204,7 +252,7 @@ try {
   await assert.rejects(
     fetch(`${base}/api/status`, { signal: AbortSignal.timeout(1000) }),
   );
-  assert.equal(await readFile(configFile, 'utf8'), config);
+  assert.equal(await readFile(configFile, 'utf8'), expectedConfig);
   const check = new MailStore(storeConfig);
   assert.equal(
     check.account('docker-fixture').name,
@@ -232,9 +280,18 @@ try {
   assert.equal(persistedRebates.summary.settledRevenue, 0);
   assert.equal(persistedRebates.summary.unsettledRevenue, 100);
   assert.equal(persistedRebates.summary.conversionRate, 30);
-  assert.equal(persistedRebates.comparison[0].conversionRate, 30);
-  assert.equal(persistedRebates.comparison[0].settledRevenue, 0);
-  assert.equal(persistedRebates.comparison[0].unsettledRevenue, 100);
+  const offerComparison = persistedRebates.comparison.find(
+    (item) => item.offerName === 'Local test offer',
+  );
+  const bannedComparison = persistedRebates.comparison.find(
+    (item) => item.offerName === 'Banned offer',
+  );
+  assert.equal(persistedRebates.comparison.length, 2);
+  assert.equal(offerComparison.conversionRate, 25);
+  assert.equal(offerComparison.settledRevenue, 0);
+  assert.equal(offerComparison.unsettledRevenue, 100);
+  assert.equal(bannedComparison.totalRevenue, 0);
+  assert.equal(bannedComparison.totalCost, 5);
   assert.equal(
     persistedRebates.records.find((item) => item.banned).totalRevenue,
     1000,
@@ -250,7 +307,7 @@ try {
     offerNames: ['Banned offer', 'Local test offer'],
   });
   console.log(
-    'Docker smoke passed: image excludes private files; local env, encrypted database, read-only config, SPA/API, rebate records and totals, stop, and container recreation verified.',
+    'Docker smoke passed: image excludes private files; writable env settings, masked secrets, encrypted database, SPA/API, rebate records and totals, stop, and container recreation verified.',
   );
 } finally {
   compose(['down', '--remove-orphans'], true);

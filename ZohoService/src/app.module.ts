@@ -7,15 +7,18 @@ import { AccessGuard, SessionService } from './security';
 import { MailStore } from './store';
 import { ZohoClient } from './zoho';
 import { RebatesController } from './rebates.controller';
+import { SettingsController } from './settings.controller';
+import { SettingsService } from './settings.service';
 
 @Module({
-  controllers: [AppController, RebatesController],
+  controllers: [AppController, RebatesController, SettingsController],
   providers: [
     AppConfig,
     SessionService,
     MailStore,
     ZohoClient,
     MailService,
+    SettingsService,
     { provide: APP_GUARD, useClass: AccessGuard },
   ],
 })

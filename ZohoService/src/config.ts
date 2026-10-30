@@ -1,8 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { resolve } from 'node:path';
+import { environmentOverrideKeys, runtimeEnvironmentFile } from './runtime-env';
 
 @Injectable()
 export class AppConfig {
+  readonly envFile = runtimeEnvironmentFile() || resolve(process.env.DOTENV_CONFIG_PATH || '.env');
+  readonly environmentOverrides = environmentOverrideKeys();
+  readonly environmentValues: ReadonlyMap<string, string> = new Map(
+    [...this.environmentOverrides].flatMap((key) => process.env[key] === undefined ? [] : [[key, process.env[key]!] as const]),
+  );
   readonly mode = process.env.APP_MODE || 'demo';
   readonly port = Number(process.env.PORT || 3001);
   readonly host = process.env.HOST || '127.0.0.1';

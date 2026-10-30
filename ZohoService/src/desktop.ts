@@ -60,6 +60,8 @@ export async function startDesktop(
   const app = await createApp({
     webRoot: configuredRoot,
     shutdownHooks: false,
+    settingsFile: configuration.configPath,
+    desktopSettings: true,
   });
   const listeners = new Map<NodeJS.Signals, () => void>();
   let closing: Promise<void> | undefined;

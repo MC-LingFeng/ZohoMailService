@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatConversion, formatConversionApprox } from '../src/rebates.ts';
+import {
+  comparisonKey,
+  conversionMultiple,
+  formatConversion,
+  formatConversionApprox,
+  sortComparisons,
+} from '../src/rebates.ts';
+import type { RebateComparison } from '../src/types.ts';
 
 test('conversion reduces cost:revenue to its simplest integer ratio', () => {
   assert.equal(formatConversion(20, 400), '1:20');
@@ -70,4 +77,59 @@ test('approximate conversion keeps large ratios as plain ungrouped decimals', ()
     formatConversionApprox(0.01, 90_071_992_547_409.9),
     '9007199254740990.000',
   );
+});
+
+function comparison(overrides: Partial<RebateComparison> = {}): RebateComparison {
+  return {
+    accountId: 'mail-1', accountEmail: 'test@example.com', accountName: 'Test',
+    siteName: '返利网', domain: 'rewards.example.com', offerName: 'Offer A',
+    totalRevenue: 100, totalCost: 20, settledRevenue: 40, unsettledRevenue: 60,
+    conversionRate: 20, recordCount: 1, ...overrides,
+  };
+}
+
+test('comparison identities distinguish offers, sites, domains and mailboxes', () => {
+  const items = [
+    comparison(),
+    comparison({ offerName: 'Offer B' }),
+    comparison({ siteName: '另一个返利网' }),
+    comparison({ domain: 'other.example.com' }),
+    comparison({ accountId: 'mail-2' }),
+  ];
+  assert.equal(new Set(items.map(comparisonKey)).size, items.length);
+  assert.notEqual(
+    comparisonKey(comparison({ siteName: 'a|b', domain: 'c' })),
+    comparisonKey(comparison({ siteName: 'a', domain: 'b|c' })),
+  );
+});
+
+test('comparison sorting retains all offers and leaves source data untouched', () => {
+  const items = Array.from({ length: 25 }, (_, index) => comparison({
+    offerName: `Offer ${index}`, totalRevenue: index * 10, totalCost: 100 - index,
+  }));
+  const original = [...items];
+  const byRevenue = sortComparisons(items, 'totalRevenue');
+  assert.equal(byRevenue.length, 25);
+  assert.equal(byRevenue[0].totalRevenue, 240);
+  assert.equal(byRevenue.at(-1)?.totalRevenue, 0);
+  assert.equal(sortComparisons(items, 'totalCost')[0].totalCost, 100);
+  assert.deepEqual(items, original);
+});
+
+test('conversion chart uses revenue per cost and keeps zero cost undefined', () => {
+  assert.equal(conversionMultiple(4, 41), 10.25);
+  assert.equal(conversionMultiple(100, 25), 0.25);
+  assert.equal(conversionMultiple(0.03, 0.07), 2.333);
+  assert.equal(conversionMultiple(20, 0), 0);
+  assert.equal(conversionMultiple(0, 20), null);
+  assert.equal(conversionMultiple(0, 0), null);
+  const items = [
+    comparison({ offerName: 'zero cost', totalCost: 0, totalRevenue: 999 }),
+    comparison({ offerName: 'zero revenue', totalCost: 50, totalRevenue: 0 }),
+    comparison({ offerName: 'higher return', totalCost: 10, totalRevenue: 100 }),
+    comparison({ offerName: 'lower return', totalCost: 100, totalRevenue: 25 }),
+  ];
+  assert.deepEqual(sortComparisons(items, 'conversion').map((item) => item.offerName), [
+    'higher return', 'lower return', 'zero revenue', 'zero cost',
+  ]);
 });

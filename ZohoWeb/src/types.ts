@@ -6,6 +6,24 @@ export interface AppStatus {
   manualCredentialsSupported?: boolean;
   authenticated: boolean;
 }
+
+export interface SettingsField {
+  key: string;
+  label: string;
+  comment?: string;
+  value: string | null;
+  secret: boolean;
+  configured: boolean;
+  readOnly: boolean;
+  reason?: string;
+}
+
+export interface AppSettings {
+  fileName: string;
+  revision: string;
+  restartRequired: boolean;
+  fields: SettingsField[];
+}
 export interface Account {
   id: string;
   email: string;
@@ -90,6 +108,9 @@ export interface RebateComparison {
   accountId: string;
   accountEmail: string;
   accountName: string;
+  siteName: string;
+  domain: string;
+  offerName: string;
   totalRevenue: number;
   settledRevenue: number;
   unsettledRevenue: number;

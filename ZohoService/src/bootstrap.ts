@@ -9,10 +9,13 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AppConfig } from './config';
+import { SettingsService } from './settings.service';
 
 export interface AppOptions {
   webRoot?: string;
   shutdownHooks?: boolean;
+  settingsFile?: string;
+  desktopSettings?: boolean;
 }
 
 export async function createApp(options: AppOptions = {}) {
@@ -29,6 +32,8 @@ export async function createApp(options: AppOptions = {}) {
     logger: ['error', 'warn', 'log'],
   });
   const config = app.get(AppConfig);
+  if (options.settingsFile)
+    app.get(SettingsService).setSource(options.settingsFile, options.desktopSettings);
   app.setGlobalPrefix('api');
   app.use(helmet());
   app.use(cookieParser());

@@ -29,6 +29,7 @@
   --color-accent-muted: #edf5f0;
   --color-accent-line: #dbece2;
   --color-accent-hover: #3b7d65;
+  --color-revenue-unsettled: #f2b6b6;
   --color-warning-surface: #fffbeb;
   --color-warning-line: #fde68a;
   --color-warning-ink: #b45309;
@@ -78,6 +79,7 @@
     --color-accent-muted: #203f35;
     --color-accent-line: #355c4e;
     --color-accent-hover: #b7e8ce;
+    --color-revenue-unsettled: #d99199;
     --color-warning-surface: #372e1d;
     --color-warning-line: #605132;
     --color-warning-ink: #ecc989;

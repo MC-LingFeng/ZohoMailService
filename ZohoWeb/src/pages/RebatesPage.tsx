@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useEffect,
   useId,
   useMemo,
@@ -7,17 +9,13 @@ import {
   type FormEvent,
 } from 'react';
 import {
-  ArrowDownUp,
-  BarChart3,
   ChevronLeft,
   ChevronRight,
-  CircleDollarSign,
   Pencil,
   Plus,
   RefreshCw,
   Search,
   Trash2,
-  Wallet,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
@@ -31,13 +29,14 @@ import {
 } from '../components/ui';
 import type {
   Account,
-  RebateComparison,
   RebateInput,
   RebateList,
   RebateOptions,
   RebateRecord,
 } from '../types';
 import { useWorkspace } from '../workspace';
+
+const RebateOverview = lazy(() => import('../components/RebateOverview'));
 
 const pageSize = 20;
 const amount = (value: number) =>
@@ -266,13 +265,6 @@ function SavedValueField({
   );
 }
 
-type ChartMetric = 'totalRevenue' | 'totalCost' | 'conversion';
-const emptyTotals = {
-  totalCost: 0,
-  totalRevenue: 0,
-  settledRevenue: 0,
-  unsettledRevenue: 0,
-};
 function approximateConversion(
   cost: number,
   revenue: number,
@@ -283,239 +275,6 @@ function approximateConversion(
     ? '≈ —'
     : `≈ ${normalized ? '1:' : ''}${approximation}`;
 }
-function ComparisonChart({
-  metric,
-  totals,
-  comparison,
-  loading,
-}: {
-  metric: ChartMetric;
-  totals: {
-    totalRevenue: number;
-    totalCost: number;
-    settledRevenue: number;
-    unsettledRevenue: number;
-  };
-  comparison: RebateComparison[];
-  loading: boolean;
-}) {
-  const settings = {
-    totalRevenue: {
-      title: '收益对比',
-      caption: '总收益',
-      color: 'text-accent',
-      Icon: CircleDollarSign,
-    },
-    totalCost: {
-      title: '成本对比',
-      caption: '总成本',
-      color: 'text-warning-ink',
-      Icon: Wallet,
-    },
-    conversion: {
-      title: '转化对比',
-      caption: '整体转化',
-      color: 'text-info-ink',
-      Icon: ArrowDownUp,
-    },
-  }[metric];
-  const rankValue = (item: RebateComparison) =>
-    metric !== 'conversion'
-      ? item[metric]
-      : item.totalRevenue > 0
-        ? item.totalCost / item.totalRevenue
-        : item.totalCost > 0
-          ? Infinity
-          : 0;
-  // Cost's share of cost + revenue keeps chart geometry finite even for 1:0.
-  const barValue = (item: RebateComparison) =>
-    metric !== 'conversion'
-      ? item[metric]
-      : item.totalCost > 0
-        ? item.totalCost / (item.totalCost + item.totalRevenue)
-        : 0;
-  const ranked = [...comparison]
-    .sort(
-      (a, b) =>
-        rankValue(b) - rankValue(a) ||
-        a.accountEmail.localeCompare(b.accountEmail),
-    )
-    .slice(0, 8);
-  const maximum = Math.max(...ranked.map(barValue), 0);
-  const format = (item: { totalCost: number; totalRevenue: number }) =>
-    metric === 'conversion'
-      ? formatConversion(item.totalCost, item.totalRevenue)
-      : amount(item[metric]);
-  return (
-    <section
-      className="panel flex min-w-0 flex-col p-5"
-      aria-label={settings.title}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xs font-medium text-muted">{settings.title}</h2>
-        <settings.Icon
-          size={17}
-          className={settings.color}
-          aria-hidden="true"
-        />
-      </div>
-      <p className="mt-4 break-all text-2xl font-semibold tracking-tight tabular-nums">
-        {loading ? '—' : format(totals)}
-      </p>
-      {metric === 'conversion' && !loading && (
-        <p className="mt-1 break-all text-xs tabular-nums text-muted">
-          {approximateConversion(totals.totalCost, totals.totalRevenue)}
-        </p>
-      )}
-      <p className="mt-1.5 text-[10px] text-subtle">
-        {settings.caption}
-        {metric === 'conversion' ? ' · 成本:收益，自动约分' : ' · 金额'}
-      </p>
-      {metric === 'totalRevenue' && !loading && (
-        <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] leading-5 tabular-nums text-muted">
-          <span>已结款 {amount(totals.settledRevenue)}</span>
-          <span>未结款 {amount(totals.unsettledRevenue)}</span>
-        </p>
-      )}
-      <div className="mt-5 flex-1 border-t border-line-soft pt-4">
-        {loading ? (
-          <Spinner label="正在汇总" />
-        ) : ranked.length === 0 ? (
-          <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-xs text-subtle">
-            <BarChart3 size={26} strokeWidth={1.2} aria-hidden="true" />
-            暂无可对比的邮箱记录
-          </div>
-        ) : (
-          <ol className="space-y-3.5" aria-label={`${settings.title}邮箱排名`}>
-            {ranked.map((item) => (
-              <li key={item.accountId}>
-                <div className="mb-1.5 flex min-w-0 items-center justify-between gap-3 text-[10px]">
-                  <span
-                    className="truncate text-body"
-                    title={`${item.accountName} · ${item.accountEmail}`}
-                  >
-                    {item.accountEmail}
-                  </span>
-                  <span className="min-w-0 max-w-[55%] text-right font-medium tabular-nums text-ink">
-                    <span className="block break-all">{format(item)}</span>
-                    {metric === 'conversion' && (
-                      <span className="mt-0.5 block break-all text-subtle">
-                        {approximateConversion(
-                          item.totalCost,
-                          item.totalRevenue,
-                        )}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                {metric === 'totalRevenue' && (
-                  <p className="mb-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] leading-4 tabular-nums text-muted">
-                    <span>已结款 {amount(item.settledRevenue)}</span>
-                    <span>未结款 {amount(item.unsettledRevenue)}</span>
-                  </p>
-                )}
-                <svg
-                  className={`h-1.5 w-full overflow-hidden rounded-full ${settings.color}`}
-                  viewBox="0 0 300 6"
-                  preserveAspectRatio="none"
-                  aria-hidden="true"
-                >
-                  <rect
-                    width="300"
-                    height="6"
-                    rx="3"
-                    className="fill-surface-hover"
-                  />
-                  {metric === 'totalRevenue' ? (
-                    <>
-                      <rect
-                        width={
-                          maximum > 0
-                            ? (item.settledRevenue / maximum) * 300
-                            : 0
-                        }
-                        height="6"
-                        className="fill-accent"
-                      />
-                      <rect
-                        x={
-                          maximum > 0
-                            ? (item.settledRevenue / maximum) * 300
-                            : 0
-                        }
-                        width={
-                          maximum > 0
-                            ? (item.unsettledRevenue / maximum) * 300
-                            : 0
-                        }
-                        height="6"
-                        className="fill-revenue-unsettled"
-                      />
-                    </>
-                  ) : metric === 'conversion' ? (
-                    item.totalCost + item.totalRevenue > 0 && (
-                      <>
-                        <rect
-                          width={barValue(item) * 300}
-                          height="6"
-                          className="fill-warning-ink"
-                        />
-                        <rect
-                          x={barValue(item) * 300}
-                          width={(1 - barValue(item)) * 300}
-                          height="6"
-                          className="fill-accent"
-                        />
-                      </>
-                    )
-                  ) : (
-                    <rect
-                      width={maximum > 0 ? (barValue(item) / maximum) * 300 : 0}
-                      height="6"
-                      rx="3"
-                      fill="currentColor"
-                    />
-                  )}
-                </svg>
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
-      <p className="mt-4 text-[10px] leading-5 text-subtle">
-        按邮箱汇总、由高到低
-        {comparison.length > 8
-          ? ` · 前 8 / ${comparison.length} 个邮箱`
-          : ` · ${comparison.length} 个邮箱`}
-        {metric === 'conversion' && (
-          <span className="mt-1 flex items-center gap-3">
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-warning-ink" />
-              成本
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-accent" />
-              收益
-            </span>
-          </span>
-        )}
-        {metric === 'totalRevenue' && (
-          <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-accent" />
-              已结款
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-revenue-unsettled" />
-              未结款
-            </span>
-          </span>
-        )}
-      </p>
-    </section>
-  );
-}
-
 interface EditorFields extends Omit<RebateInput, 'totalRevenue' | 'totalCost'> {
   totalRevenue: string;
   totalCost: string;
@@ -721,9 +480,9 @@ export default function RebatesPage() {
   return (
     <div className="page-wrap">
       <PageTitle
-        eyebrow="Rebate workspace"
+        eyebrow="返利管理"
         title="返利网"
-        description="按邮箱记录注册信息，让每一笔收益与成本都有据可查。"
+        description="按邮箱管理返利网与 Offer，逐项对比收益、成本和转化。"
         action={
           <button
             className="btn-primary"
@@ -762,30 +521,13 @@ export default function RebatesPage() {
           </button>
         </div>
       ) : (
-        <div className="mb-5 grid gap-4 md:grid-cols-3">
-          <ComparisonChart
-            metric="totalRevenue"
-            totals={data?.summary || emptyTotals}
-            comparison={data?.comparison || []}
-            loading={loading}
-          />
-          <ComparisonChart
-            metric="totalCost"
-            totals={data?.summary || emptyTotals}
-            comparison={data?.comparison || []}
-            loading={loading}
-          />
-          <ComparisonChart
-            metric="conversion"
-            totals={data?.summary || emptyTotals}
-            comparison={data?.comparison || []}
-            loading={loading}
-          />
-        </div>
+        <Suspense fallback={<div className="panel mb-5"><Spinner label="正在加载对比图表" /></div>}>
+          <RebateOverview data={data} loading={loading} />
+        </Suspense>
       )}
       <p className="mb-2 text-[11px] leading-6 text-subtle">
         转化按“成本:收益”自动约分，例如 20:400 显示 1:20，并显示归一至成本为 1
-        后的近似值；整体转化按汇总金额计算。
+        后的近似值；图中转化倍数为收益 ÷ 成本，越高表示每份成本对应的收益越多；成本为 0 时倍数为 —。整体转化按汇总金额计算。
       </p>
       <p className="mb-7 text-[11px] leading-6 text-muted">
         已封户记录仅计成本，不计收益；明细保留录入金额。

@@ -12,6 +12,7 @@ import {
   Menu,
   PanelLeftClose,
   ServerOff,
+  Settings,
   ShieldCheck,
   Sparkles,
   Users,
@@ -25,6 +26,7 @@ import MailPage from './pages/MailPage';
 import AccountsPage from './pages/AccountsPage';
 import GuidePage from './pages/GuidePage';
 import RebatesPage from './pages/RebatesPage';
+import SettingsPage from './pages/SettingsPage';
 import { useWorkspace, WorkspaceProvider } from './workspace';
 import type { AppStatus } from './types';
 
@@ -56,11 +58,15 @@ function Shell() {
     { to: '/mail', label: '邮件工作台', icon: Inbox },
     { to: '/accounts', label: '邮箱账号', icon: Users },
     { to: '/rebates', label: '返利网', icon: ChartNoAxesCombined },
+    { to: '/settings', label: '系统设置', icon: Settings },
     { to: '/guide', label: '使用指南', icon: BookOpen },
   ];
   const current =
     navigation.find((item) => item.to === location.pathname)?.label ||
     '页面未找到';
+  useEffect(() => {
+    document.title = `${current} · ZoHome`;
+  }, [current]);
   const logout = async () => {
     setLoggingOut(true);
     setLogoutError('');
@@ -210,6 +216,7 @@ function Shell() {
           <Route path="/mail" element={<MailPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/rebates" element={<RebatesPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/guide" element={<GuidePage />} />
           <Route
             path="*"

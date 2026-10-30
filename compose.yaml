@@ -23,7 +23,6 @@ services:
       - type: bind
         source: ${ZOHOME_ENV_FILE:-./ZohoService/.env}
         target: /app/config/zohome.env
-        read_only: true
         bind:
           create_host_path: false
       - type: bind

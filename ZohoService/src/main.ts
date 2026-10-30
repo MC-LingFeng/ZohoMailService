@@ -1,7 +1,9 @@
 import 'reflect-metadata';
-import 'dotenv/config';
+import { loadRuntimeEnvironment } from './runtime-env';
 import { createApp } from './bootstrap';
 import { AppConfig } from './config';
+
+loadRuntimeEnvironment();
 
 async function main() {
   // Production serves the built web app from the same process; development keeps the Vite proxy flow.

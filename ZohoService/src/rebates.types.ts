@@ -26,6 +26,9 @@ export interface RebateComparison {
   accountId: string;
   accountEmail: string;
   accountName: string;
+  siteName: string;
+  domain: string;
+  offerName: string;
   totalRevenue: number;
   settledRevenue: number;
   unsettledRevenue: number;

@@ -97,11 +97,17 @@ test('rebates persist by mailbox, aggregate all filtered records and cascade on 
       recordCount: 3,
       accountCount: 2,
     });
+    assert.equal(list.comparison.length, 3);
     assert.equal(list.comparison[0].accountId, 'demo-1');
-    assert.equal(list.comparison[0].recordCount, 2);
-    assert.equal(list.comparison[0].totalRevenue, 150);
-    assert.equal(list.comparison[0].conversionRate, 23.33);
-    assert.equal(list.comparison[1].conversionRate, 0);
+    assert.equal(list.comparison[0].siteName, '测试返利网');
+    assert.equal(list.comparison[0].domain, 'rewards.example.com');
+    assert.equal(list.comparison[0].offerName, '新人 offer');
+    assert.equal(list.comparison[0].recordCount, 1);
+    assert.equal(list.comparison[0].totalRevenue, 100);
+    assert.equal(list.comparison[0].conversionRate, 25);
+    assert.equal(list.comparison[1].siteName, '第二个网站');
+    assert.equal(list.comparison[1].totalRevenue, 50);
+    assert.equal(list.comparison[2].conversionRate, 0);
     const lastPage = (await (
       await request('/rebates?pageSize=1&page=999')
     ).json()) as RebateList;
@@ -170,6 +176,146 @@ test('rebates persist by mailbox, aggregate all filtered records and cascade on 
     assert.equal(final.total, 1);
     assert.equal(final.records[0].accountId, 'demo-1');
     assert.equal(final.summary.totalRevenue, 50);
+  } finally {
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('rebate comparison separates offers, sites, domains and mailboxes while aggregating the same offer across all pages', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'zohome-rebates-offers-'));
+  configure(dir);
+  const app = await createApp();
+  try {
+    const store = app.get(MailStore);
+    const input = registration({
+      siteName: 'Alpha',
+      domain: 'rewards.example.com',
+      offerName: 'Offer A',
+      totalRevenue: 100,
+      totalCost: 10,
+      settled: true,
+    });
+    const first = store.createRebate(input);
+    store.createRebate({
+      ...input,
+      totalRevenue: 50,
+      totalCost: 20,
+      settled: false,
+    });
+    store.createRebate({
+      ...input,
+      totalRevenue: 900,
+      totalCost: 5,
+      banned: true,
+    });
+    store.createRebate({
+      ...input,
+      offerName: 'Offer B',
+      totalRevenue: 200,
+      totalCost: 40,
+    });
+    store.createRebate({
+      ...input,
+      siteName: 'Beta',
+      totalRevenue: 300,
+      totalCost: 60,
+    });
+    store.createRebate({
+      ...input,
+      domain: 'other.example.com',
+      totalRevenue: 400,
+      totalCost: 80,
+    });
+    store.createRebate({
+      ...input,
+      accountId: 'demo-2',
+      totalRevenue: 500,
+      totalCost: 100,
+    });
+    store.createRebate({
+      ...input,
+      offerName: '',
+      totalRevenue: 0,
+      totalCost: 8,
+    });
+    const query = {
+      search: '',
+      accountId: '',
+      settled: 'all' as const,
+      banned: 'all' as const,
+      page: 1,
+      pageSize: 1,
+    };
+    const list = store.rebates(query);
+    assert.equal(list.records.length, 1);
+    assert.equal(list.total, 8);
+    assert.equal(list.comparison.length, 6);
+    assert.deepEqual(list.comparison.at(0), {
+      accountId: 'demo-2',
+      accountEmail: 'design.studio@zohomail.com',
+      accountName: '设计团队',
+      siteName: 'Alpha',
+      domain: 'rewards.example.com',
+      offerName: 'Offer A',
+      totalRevenue: 500,
+      settledRevenue: 500,
+      unsettledRevenue: 0,
+      totalCost: 100,
+      conversionRate: 20,
+      recordCount: 1,
+    });
+    const combined = list.comparison.find(
+      (row) =>
+        row.accountId === input.accountId &&
+        row.siteName === input.siteName &&
+        row.domain === input.domain &&
+        row.offerName === input.offerName,
+    );
+    assert.deepEqual(combined, {
+      accountId: 'demo-1',
+      accountEmail: 'alex.chen@zohomail.com',
+      accountName: 'Alex Chen',
+      siteName: 'Alpha',
+      domain: 'rewards.example.com',
+      offerName: 'Offer A',
+      totalRevenue: 150,
+      settledRevenue: 100,
+      unsettledRevenue: 50,
+      totalCost: 35,
+      conversionRate: 23.33,
+      recordCount: 3,
+    });
+    assert.equal(list.summary.totalRevenue, 1550);
+    assert.equal(list.summary.totalCost, 323);
+    assert.equal(list.summary.accountCount, 2);
+    assert.equal(
+      list.comparison.reduce((sum, row) => sum + row.totalRevenue, 0),
+      list.summary.totalRevenue,
+    );
+    assert.equal(
+      list.comparison.reduce((sum, row) => sum + row.totalCost, 0),
+      list.summary.totalCost,
+    );
+    assert.deepEqual(store.rebates({ ...query, page: 8 }).comparison, list.comparison);
+    const filtered = store.rebates({
+      ...query,
+      accountId: 'demo-1',
+      search: 'Offer A',
+      banned: 'no',
+    });
+    assert.equal(filtered.comparison.length, 3);
+    assert.equal(filtered.summary.totalRevenue, 850);
+    assert.equal(filtered.summary.totalCost, 170);
+    store.updateRebate(first.id, { ...input, offerName: 'Offer C' });
+    const changed = store.rebates(query);
+    assert.equal(changed.comparison.length, 7);
+    assert.equal(
+      changed.comparison.find((row) => row.offerName === 'Offer C')?.totalRevenue,
+      100,
+    );
+    assert.equal(changed.summary.totalRevenue, list.summary.totalRevenue);
+    assert.equal(changed.summary.totalCost, list.summary.totalCost);
   } finally {
     await app.close();
     rmSync(dir, { recursive: true, force: true });
@@ -520,19 +666,26 @@ test('rebate overview excludes banned revenue, retains all costs and separates s
       recordCount: 4,
       accountCount: 1,
     });
-    assert.deepEqual(list.comparison, [
-      {
+    assert.equal(list.comparison.length, 4);
+    for (const input of [paid, unpaid, bannedPaid, bannedUnpaid]) {
+      const comparison = list.comparison.find(
+        (row) => row.siteName === input.siteName,
+      );
+      assert.deepEqual(comparison, {
         accountId: 'demo-1',
         accountEmail: 'alex.chen@zohomail.com',
         accountName: 'Alex Chen',
-        totalRevenue: 400,
-        settledRevenue: 100,
-        unsettledRevenue: 300,
-        totalCost: 200,
-        conversionRate: 50,
-        recordCount: 4,
-      },
-    ]);
+        siteName: input.siteName,
+        domain: 'rewards.example.com',
+        offerName: input.offerName,
+        totalRevenue: input.banned ? 0 : input.totalRevenue,
+        settledRevenue: !input.banned && input.settled ? input.totalRevenue : 0,
+        unsettledRevenue: !input.banned && !input.settled ? input.totalRevenue : 0,
+        totalCost: input.totalCost,
+        conversionRate: input.banned ? 0 : 10,
+        recordCount: 1,
+      });
+    }
     assert.deepEqual((await read('?pageSize=1&page=2')).summary, list.summary);
     const banned = await read('?banned=yes');
     assert.equal(banned.summary.totalRevenue, 0);
@@ -540,7 +693,10 @@ test('rebate overview excludes banned revenue, retains all costs and separates s
     assert.equal(banned.summary.unsettledRevenue, 0);
     assert.equal(banned.summary.totalCost, 160);
     assert.equal(banned.summary.conversionRate, 0);
-    assert.equal(banned.comparison[0].totalCost, 160);
+    assert.equal(
+      banned.comparison.reduce((total, row) => total + row.totalCost, 0),
+      160,
+    );
     assert.equal(
       banned.records.find((record) => record.id === bannedPaidRow.id)
         ?.totalRevenue,
@@ -583,8 +739,13 @@ test('rebate overview excludes banned revenue, retains all costs and separates s
     assert.equal(changed.summary.settledRevenue, 300);
     assert.equal(changed.summary.unsettledRevenue, 900);
     assert.equal(changed.summary.totalCost, 200);
-    assert.equal(changed.comparison[0].settledRevenue, 300);
+    assert.equal(changed.comparison[0].siteName, bannedPaid.siteName);
     assert.equal(changed.comparison[0].unsettledRevenue, 900);
+    assert.equal(
+      changed.comparison.find((row) => row.siteName === unpaid.siteName)
+        ?.settledRevenue,
+      300,
+    );
   } finally {
     await app.close();
     rmSync(dir, { recursive: true, force: true });

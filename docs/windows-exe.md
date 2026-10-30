@@ -23,6 +23,8 @@ ZoHome 的 Windows 分发文件是 `ZoHome-win-x64.exe`，适用于 Windows x64�
 
 可以在 Windows 资源管理器地址栏中粘贴这个路径。首次运行会创建 `zohome.env`，其中包含演示模式配置、随机生成的 `APP_PASSWORD` 和稳定保存的 `TOKEN_ENCRYPTION_KEY`。密码和密钥不会输出到控制台。
 
+打开网页中的「系统设置」，可以编辑当前工作区的 `zohome.env`。页面自动识别配置项，以对应的中文注释作为标题，密码和密钥只显示是否已配置，留空保留原值。保存后关闭控制台并重新启动 EXE，配置才会生效。已有文件的注释可以直接修改，配置值保持不变即可。
+
 配置与数据库都保存在 EXE 之外。因此，替换或移动 EXE 不会自动清除账号数据，程序更新也不需要重新分发数据库。备份工作区时，应保留数据库及其对应的加密密钥；更换密钥会使旧授权无法解密。
 
 需要自定义工作区位置时，在启动前设置 `ZOHOME_HOME`。例如，在 PowerShell 中运行：
@@ -36,8 +38,8 @@ $env:ZOHOME_HOME = 'D:\ZoHomeData'
 
 ## 接入真实邮箱
 
-1. 关闭 ZoHome 控制台，停止当前应用。
-2. 打开工作区中的 `zohome.env`，将 `APP_MODE=demo` 改为 `APP_MODE=live`。保留自动生成的 `TOKEN_ENCRYPTION_KEY`，并确认 `APP_PASSWORD` 至少有 12 个字符。
+1. 在「系统设置」中将运行模式改为真实邮箱，保存后关闭 ZoHome 控制台；也可以先关闭程序，再直接编辑配置文件。
+2. 确认工作区 `zohome.env` 中的 `APP_MODE=live`，保留自动生成的 `TOKEN_ENCRYPTION_KEY`，并确认 `APP_PASSWORD` 至少有 12 个字符。
 3. 页面和 OAuth 回调默认使用以下地址：
 
    ```dotenv

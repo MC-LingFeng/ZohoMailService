@@ -278,18 +278,22 @@ export class MailStore implements OnModuleDestroy {
       .map((row) => this.rebateRecord(row));
     const comparison: RebateComparison[] = this.db
       .prepare(
-        `SELECT r.account_id,
+        `SELECT r.account_id,r.site_name,r.domain,r.offer_name,
       json_extract(a.payload,'$.email') AS account_email,
       json_extract(a.payload,'$.name') AS account_name,
       ${rebateMoneyTotals},
-      COUNT(*) AS record_count${from} GROUP BY r.account_id
-      ORDER BY revenue_cents DESC,account_email,r.account_id`,
+      COUNT(*) AS record_count${from}
+      GROUP BY r.account_id,r.site_name,r.domain,r.offer_name
+      ORDER BY revenue_cents DESC,r.offer_name,r.site_name,r.domain,account_email,r.account_id`,
       )
       .all(...parameters)
       .map((row) => ({
         accountId: String(row.account_id),
         accountEmail: String(row.account_email),
         accountName: String(row.account_name || ''),
+        siteName: String(row.site_name),
+        domain: String(row.domain),
+        offerName: String(row.offer_name),
         totalRevenue: Number(row.revenue_cents) / 100,
         settledRevenue: Number(row.settled_revenue_cents) / 100,
         unsettledRevenue: Number(row.unsettled_revenue_cents) / 100,

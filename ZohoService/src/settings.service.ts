@@ -32,6 +32,7 @@ const digest = (value: string) => createHash('sha256').update(value).digest('hex
 const keyTitles: Record<string, string> = {
   APP_MODE: '运行模式', HOST: '监听地址', PORT: '服务端口',
   FRONTEND_URL: '网页地址', ZOHO_REDIRECT_URI: '授权回调地址',
+  OUTLOOK_REDIRECT_URI: 'Outlook 授权回调地址', OUTLOOK_TENANT: 'Microsoft 账户类型或租户',
   ZOHO_CLIENT_ID: '应用编号', ZOHO_CLIENT_SECRET: '应用密钥',
   APP_PASSWORD: '工作区密码', TOKEN_ENCRYPTION_KEY: '令牌加密密钥',
   DATA_DIR: '数据目录', ZOHO_MIN_REQUEST_INTERVAL_MS: '请求间隔（毫秒）',
@@ -170,7 +171,7 @@ export class SettingsService {
     if (!['demo', 'live'].includes(mode)) throw new BadRequestException('运行模式只能为演示模式或真实邮箱模式');
     const port = Number(get('PORT') || '3001');
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw new BadRequestException('服务端口必须为 1 至 65535 的整数');
-    for (const [key, title] of [['FRONTEND_URL', '网页地址'], ['ZOHO_REDIRECT_URI', '授权回调地址']]) {
+    for (const [key, title] of [['FRONTEND_URL', '网页地址'], ['ZOHO_REDIRECT_URI', '授权回调地址'], ['OUTLOOK_REDIRECT_URI', 'Outlook 授权回调地址']]) {
       if (!get(key)) continue;
       try {
         const url = new URL(get(key));
@@ -184,6 +185,8 @@ export class SettingsService {
     if ((encryptionKey || mode === 'live' || this.desktop) && !/^[a-f\d]{64}$/i.test(encryptionKey))
       throw new BadRequestException('令牌加密密钥必须为 64 位十六进制字符');
     const interval = get('ZOHO_MIN_REQUEST_INTERVAL_MS');
+    if (get('OUTLOOK_TENANT') && !/^[a-z\d.-]+$/i.test(get('OUTLOOK_TENANT')))
+      throw new BadRequestException('Microsoft 租户须为 common、consumers、organizations 或有效的租户标识');
     if (interval && (!Number.isSafeInteger(Number(interval)) || Number(interval) < 2100))
       throw new BadRequestException('请求间隔必须为不少于 2100 的整数，单位为毫秒');
     const host = get('HOST');
@@ -197,6 +200,9 @@ export class SettingsService {
       const callback = new URL(get('ZOHO_REDIRECT_URI') || `${frontend.origin}/api/auth/zoho/callback`);
       if (callback.origin !== frontend.origin || callback.pathname !== '/api/auth/zoho/callback' || callback.search || callback.hash)
         throw new BadRequestException('桌面版授权回调必须为网页地址下的 /api/auth/zoho/callback');
+      const outlookCallback = new URL(get('OUTLOOK_REDIRECT_URI') || `${frontend.origin}/api/auth/outlook/callback`);
+      if (outlookCallback.origin !== frontend.origin || outlookCallback.pathname !== '/api/auth/outlook/callback' || outlookCallback.search || outlookCallback.hash)
+        throw new BadRequestException('桌面版 Outlook 回调必须为网页地址下的 /api/auth/outlook/callback');
     }
   }
 

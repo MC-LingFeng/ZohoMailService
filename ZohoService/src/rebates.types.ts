@@ -1,5 +1,6 @@
 export interface RebateInput {
   accountId: string;
+  accountEmail?: string;
   siteName: string;
   domain: string;
   registeredAt: string;
@@ -15,6 +16,7 @@ export interface RebateInput {
 export interface RebateRecord extends RebateInput {
   id: string;
   accountEmail: string;
+  accountUnknown: boolean;
   accountName: string;
   accountGroup: string;
   conversionRate: number;
@@ -25,6 +27,7 @@ export interface RebateRecord extends RebateInput {
 export interface RebateComparison {
   accountId: string;
   accountEmail: string;
+  accountUnknown: boolean;
   accountName: string;
   siteName: string;
   domain: string;
@@ -64,14 +67,24 @@ export interface RebateList {
 }
 
 export interface RebateOptions {
+  accounts: RebateAccountOption[];
   siteNames: string[];
   domains: string[];
   offerNames: string[];
 }
 
+export interface RebateAccountOption {
+  id: string;
+  email: string;
+  name: string;
+  group: string;
+  unknown: boolean;
+}
+
 export interface RebateCostTarget {
   id: string;
   accountId: string;
+  mailboxKey: string;
   offerName: string;
   costCents: number;
   updatedAt: string;

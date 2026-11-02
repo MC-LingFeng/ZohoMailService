@@ -17,7 +17,6 @@ import {
   Search,
   Trash2,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { formatConversion, formatConversionApprox } from '../rebates';
 import {
@@ -28,7 +27,7 @@ import {
   Spinner,
 } from '../components/ui';
 import type {
-  Account,
+  RebateAccountOption,
   RebateCostRefresh,
   RebateInput,
   RebateList,
@@ -57,7 +56,7 @@ function AccountSelect({
   required = false,
   disabled = false,
 }: {
-  accounts: Account[];
+  accounts: RebateAccountOption[];
   value: string;
   onChange: (id: string) => void;
   required?: boolean;
@@ -68,7 +67,7 @@ function AccountSelect({
   const matching = useMemo(
     () =>
       accounts.filter((account) =>
-        `${account.email} ${account.name} ${account.group}`
+        `${account.email} ${account.name} ${account.group} ${account.unknown ? '未知' : ''}`
           .toLowerCase()
           .includes(search.trim().toLowerCase()),
       ),
@@ -104,7 +103,7 @@ function AccountSelect({
         <option value="">{required ? '请选择邮箱' : '全部邮箱'}</option>
         {choices.map((account) => (
           <option key={account.id} value={account.id}>
-            {account.email} · {account.name}
+            {account.email} · {account.unknown ? '未知' : account.name || '已绑定'}
           </option>
         ))}
       </select>
@@ -118,6 +117,56 @@ function AccountSelect({
           没有匹配的邮箱{selected ? '，当前选择已保留' : ''}。
         </p>
       )}
+    </div>
+  );
+}
+
+function RebateEmailField({ accounts, value, onChange, disabled, keepUnknown = false }: {
+  accounts: RebateAccountOption[];
+  value: string;
+  onChange: (email: string) => void;
+  disabled: boolean;
+  keepUnknown?: boolean;
+}) {
+  const id = useId();
+  const normalized = value.trim().toLowerCase();
+  const matched = keepUnknown ? undefined : accounts.find((account) => !account.unknown && account.email.toLowerCase() === normalized);
+  const unknown = Boolean(normalized && !matched);
+  const savedEmails = new Map<string, RebateAccountOption>();
+  for (const account of accounts) {
+    const email = account.email.toLowerCase();
+    if (!savedEmails.has(email) || (!account.unknown && savedEmails.get(email)?.unknown)) savedEmails.set(email, account);
+  }
+  const suggestions = [...savedEmails.values()];
+  return (
+    <div>
+      <label className="field-label" htmlFor={`${id}-email`}>关联邮箱 *</label>
+      <input
+        id={`${id}-email`}
+        className="input"
+        type="email"
+        list={`${id}-emails`}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required
+        maxLength={254}
+        disabled={disabled}
+        placeholder="选择已有邮箱，或直接输入邮箱地址"
+        autoComplete="off"
+      />
+      <datalist id={`${id}-emails`}>
+        {suggestions.map((account) => (
+          <option key={account.id} value={account.email}>
+            {account.unknown ? '未知 · 仅返利网使用' : account.name || '已绑定邮箱'}
+          </option>
+        ))}
+      </datalist>
+      <div className="mt-2 flex items-start gap-2 text-[10px] leading-5 text-subtle">
+        {unknown && <span className="badge-muted">未知</span>}
+        <p>{unknown
+          ? '此邮箱仅保存在返利网记录中，不会加入邮箱账号或邮件页面。'
+          : matched ? `已关联邮箱账号${matched.name ? ` · ${matched.name}` : ''}` : '无需先绑定邮箱；输入新地址后会自动标为“未知”，仅用于返利网记录。'}</p>
+      </div>
     </div>
   );
 }
@@ -280,8 +329,9 @@ interface EditorFields extends Omit<RebateInput, 'totalRevenue' | 'totalCost'> {
   totalRevenue: string;
   totalCost: string;
 }
-const blankFields = (accountId: string): EditorFields => ({
+const blankFields = (accountId: string, accountEmail = ''): EditorFields => ({
   accountId,
+  accountEmail,
   siteName: '',
   domain: '',
   registeredAt: localDate(),
@@ -295,7 +345,7 @@ const blankFields = (accountId: string): EditorFields => ({
 });
 
 export default function RebatesPage() {
-  const { accounts, loading: accountsLoading, toast } = useWorkspace();
+  const { accounts, toast } = useWorkspace();
   const [filters, setFilters] = useState({
     search: '',
     accountId: '',
@@ -314,6 +364,7 @@ export default function RebatesPage() {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [optionsError, setOptionsError] = useState('');
   const [editing, setEditing] = useState<RebateRecord | null>(null);
+  const [linkKnown, setLinkKnown] = useState(false);
   const [fields, setFields] = useState<EditorFields>(() => blankFields(''));
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -323,6 +374,16 @@ export default function RebatesPage() {
   const costsRefreshLock = useRef(false);
   const [costRefreshResult, setCostRefreshResult] = useState<RebateCostRefresh | null>(null);
   const [costRefreshError, setCostRefreshError] = useState('');
+  const rebateAccounts = useMemo(() => {
+    const choices = new Map<string, RebateAccountOption>();
+    for (const account of accounts) choices.set(account.id, { ...account, unknown: false });
+    for (const account of options?.accounts || []) choices.set(account.id, account);
+    for (const record of data?.records || []) if (!choices.has(record.accountId)) choices.set(record.accountId, {
+      id: record.accountId, email: record.accountEmail, name: record.accountName,
+      group: record.accountGroup, unknown: record.accountUnknown,
+    });
+    return [...choices.values()];
+  }, [accounts, options, data]);
   const query = new URLSearchParams({
     search: filters.search.trim(),
     accountId: filters.accountId,
@@ -363,11 +424,9 @@ export default function RebatesPage() {
   }, [query, revision, filters.page]);
 
   useEffect(() => {
-    if (!editorOpen) return;
     const controller = new AbortController();
     setOptionsLoading(true);
     setOptionsError('');
-    setOptions(null);
     void api<RebateOptions>('/rebates/options', { signal: controller.signal })
       .then((result) => {
         if (controller.signal.aborted) return;
@@ -382,7 +441,7 @@ export default function RebatesPage() {
         setOptionsLoading(false);
       });
     return () => controller.abort();
-  }, [editorOpen, editorEpoch, optionsRevision]);
+  }, [editorEpoch, optionsRevision, revision]);
 
   const changeFilter = (
     key: 'search' | 'accountId' | 'settled' | 'banned',
@@ -393,15 +452,16 @@ export default function RebatesPage() {
   const openEditor = (record?: RebateRecord) => {
     if (costsRefreshLock.current) return;
     setEditing(record || null);
+    setLinkKnown(false);
     setFormError('');
-    setOptions(null);
     setOptionsError('');
     setOptionsLoading(true);
     setEditorEpoch((value) => value + 1);
     setFields(
       record
         ? {
-            accountId: record.accountId,
+            accountId: record.accountUnknown ? '' : record.accountId,
+            accountEmail: record.accountEmail,
             siteName: record.siteName,
             domain: record.domain,
             registeredAt: record.registeredAt,
@@ -413,7 +473,10 @@ export default function RebatesPage() {
             banned: record.banned,
             ip: record.ip,
           }
-        : blankFields(filters.accountId),
+        : blankFields(
+            rebateAccounts.find((account) => account.id === filters.accountId)?.unknown ? '' : filters.accountId,
+            rebateAccounts.find((account) => account.id === filters.accountId)?.email || '',
+          ),
     );
     setEditorOpen(true);
   };
@@ -429,8 +492,12 @@ export default function RebatesPage() {
     if (busy || costsRefreshLock.current) return;
     setBusy(true);
     setFormError('');
+    const accountEmail = fields.accountEmail?.trim().toLowerCase();
+    const preserveUnknown = !linkKnown && editing?.accountUnknown && accountEmail === editing.accountEmail.trim().toLowerCase();
     const payload: RebateInput = {
       ...fields,
+      accountId: preserveUnknown ? editing.accountId : fields.accountId,
+      accountEmail,
       siteName: fields.siteName.trim(),
       domain: fields.domain.trim(),
       offerName: fields.offerName.trim(),
@@ -505,13 +572,15 @@ export default function RebatesPage() {
       filters.banned !== 'all',
   );
   const pageCount = Math.max(1, Math.ceil((data?.total || 0) / pageSize));
+  const originalUnknownEmail = Boolean(editing?.accountUnknown && fields.accountEmail?.trim().toLowerCase() === editing.accountEmail.trim().toLowerCase());
+  const matchingKnownAccount = rebateAccounts.find((account) => !account.unknown && account.email.toLowerCase() === fields.accountEmail?.trim().toLowerCase());
 
   return (
     <div className="page-wrap">
       <PageTitle
         eyebrow="返利管理"
         title="返利网"
-        description="按邮箱管理返利网与 Offer，逐项对比收益、成本和转化。"
+        description="按邮箱管理返利网记录，合并同名 Offer 对比收益、成本和转化。"
         action={
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -527,7 +596,7 @@ export default function RebatesPage() {
             <button
               className="btn-primary"
               onClick={() => openEditor()}
-              disabled={accountsLoading || accounts.length === 0 || refreshingCosts}
+              disabled={refreshingCosts}
             >
               <Plus size={15} />
               新增记录
@@ -659,7 +728,7 @@ export default function RebatesPage() {
               </div>
             </div>
             <AccountSelect
-              accounts={accounts}
+              accounts={rebateAccounts}
               value={filters.accountId}
               onChange={(value) => changeFilter('accountId', value)}
             />
@@ -697,23 +766,13 @@ export default function RebatesPage() {
           <div className="p-6 text-center text-xs leading-6 text-muted">
             记录暂时无法加载，请使用上方的“重新加载”重试。
           </div>
-        ) : !accountsLoading && accounts.length === 0 ? (
-          <EmptyState
-            title="先连接一个邮箱"
-            description="返利网记录需要关联邮箱。连接后即可记录它注册的返利网、Offer 和收支。"
-            action={
-              <Link className="btn-primary" to="/accounts">
-                前往邮箱账号
-              </Link>
-            }
-          />
         ) : data?.records.length === 0 ? (
           <EmptyState
             title={hasFilters ? '没有符合条件的记录' : '开始记录第一个返利网'}
             description={
               hasFilters
                 ? '试试其他邮箱或搜索词，或清除结款和封户状态筛选。'
-                : '选择关联邮箱，填写返利网与 Offer 信息，收益和成本默认从 0 开始。'
+                : '选择已有邮箱或直接输入邮箱地址，填写返利网与 Offer 信息，收益和成本默认从 0 开始。'
             }
             action={
               hasFilters ? (
@@ -789,6 +848,7 @@ export default function RebatesPage() {
                       <td className="min-w-56 max-w-56 bg-surface px-4 py-4 break-words group-hover:bg-surface-muted sm:sticky sm:left-0 sm:z-10">
                         <p className="font-medium text-ink">
                           {record.accountName}
+                          {record.accountUnknown && <span className="badge-muted ml-2">未知</span>}
                         </p>
                         <p className="mt-1 break-all text-muted">
                           {record.accountEmail}
@@ -933,14 +993,35 @@ export default function RebatesPage() {
             disabled={busy}
             className="max-h-[68vh] space-y-5 overflow-y-auto px-6 py-5"
           >
-            <AccountSelect
+            <RebateEmailField
               key={`account-${editorEpoch}`}
-              accounts={accounts}
-              value={fields.accountId}
-              onChange={(value) => setField('accountId', value)}
-              required
+              accounts={rebateAccounts}
+              value={fields.accountEmail || ''}
+              keepUnknown={originalUnknownEmail && !linkKnown}
+              onChange={(email) => {
+                setLinkKnown(false);
+                const normalized = email.trim().toLowerCase();
+                setFields((current) => {
+                  const matches = rebateAccounts.filter((account) => !account.unknown && account.email.toLowerCase() === normalized);
+                  const selected = matches.find((account) => account.id === current.accountId) || matches[0];
+                  return { ...current, accountId: selected?.id || '', accountEmail: email };
+                });
+              }}
               disabled={busy}
             />
+            {originalUnknownEmail && matchingKnownAccount && !linkKnown && (
+              <button
+                type="button"
+                className="btn-quiet text-accent"
+                disabled={busy}
+                onClick={() => {
+                  setFields((current) => ({ ...current, accountId: matchingKnownAccount.id }));
+                  setLinkKnown(true);
+                }}
+              >
+                关联已绑定邮箱
+              </button>
+            )}
             {optionsLoading && (
               <p className="text-[10px] text-subtle" role="status">
                 正在读取已保存的返利网名称、域名和 Offer…

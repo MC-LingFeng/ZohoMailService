@@ -17,6 +17,7 @@ import { decryptToken, encryptToken, SessionService } from './security';
 import { MailStore } from './store';
 import { Folder, MailDetail, MailMessage, StoredAccount } from './types';
 import { ZohoClient } from './zoho';
+import { OutlookMailService } from './outlook-mail.service';
 
 type Json = Record<string, unknown>;
 type Page = { messages: MailMessage[]; hasMore: boolean; cached: boolean };
@@ -35,6 +36,7 @@ export class MailService {
     private readonly store: MailStore,
     private readonly zoho: ZohoClient,
     private readonly sessions: SessionService,
+    private readonly outlook: OutlookMailService,
   ) {}
 
   accounts() {
@@ -68,6 +70,7 @@ export class MailService {
     this.account(id);
     this.store.removeAccount(id);
     this.zoho.forget(id);
+    this.outlook.forget(id);
     this.invalidate(id);
     return { success: true };
   }
@@ -115,39 +118,45 @@ export class MailService {
     query: ListMessagesDto,
     key: string,
   ): Promise<Page> {
-    const folder = await this.folder(account, query.folder);
-    const data = await this.zoho.request(
-      account,
-      `/api/accounts/${encodeURIComponent(account.zohoAccountId)}/messages/view`,
-      {
-        query: {
-          folderId: String(folder.folderId),
-          start: query.start,
-          limit: query.limit,
-          includeto: 'true',
-          includesent: query.folder === 'sent' ? 'true' : 'false',
-          sortBy: 'date',
-          sortorder: 'false',
-        },
-      },
-    );
-    if (!Array.isArray(data))
-      throw new BadRequestException('Zoho 返回了无效的邮件列表');
-    const messages = data.map((row) =>
-      this.mapMessage(
-        row as Json,
+    let messages: MailMessage[];
+    let hasMore: boolean;
+    let providerUnread: number | undefined;
+    if (account.provider === 'outlook') {
+      const page = await this.outlook.page(account, query);
+      messages = page.messages;
+      hasMore = page.hasMore;
+      providerUnread = page.unread;
+    } else {
+      const folder = await this.folder(account, query.folder);
+      const data = await this.zoho.request(
         account,
-        query.folder,
-        String(folder.folderId),
-      ),
-    );
+        `/api/accounts/${encodeURIComponent(account.zohoAccountId)}/messages/view`,
+        {
+          query: {
+            folderId: String(folder.folderId),
+            start: query.start,
+            limit: query.limit,
+            includeto: 'true',
+            includesent: query.folder === 'sent' ? 'true' : 'false',
+            sortBy: 'date',
+            sortorder: 'false',
+          },
+        },
+      );
+      if (!Array.isArray(data))
+        throw new BadRequestException('Zoho 返回了无效的邮件列表');
+      messages = data.map((row) =>
+        this.mapMessage(row as Json, account, query.folder, String(folder.folderId)),
+      );
+      hasMore = data.length === query.limit;
+    }
     for (const message of messages) this.store.saveMessage(message);
-    const unread =
+    const unread = providerUnread ?? (
       query.folder === 'inbox'
         ? this.store
             .messages(account.id, 'inbox')
             .filter((message) => !message.isRead).length
-        : account.unread;
+        : account.unread);
     const latest = this.account(account.id);
     this.store.saveAccount({
       ...latest,
@@ -169,7 +178,7 @@ export class MailService {
             ),
           )
         : messages,
-      hasMore: data.length === query.limit,
+      hasMore,
       cached: false,
     };
     if (this.pages.size > 2000) this.pages.clear();
@@ -198,6 +207,7 @@ export class MailService {
       }
       return { ...previous, isRead: true };
     }
+    if (account.provider === 'outlook') return this.outlook.detail(account, previous);
     const data = (await this.zoho.request(
       account,
       `/api/accounts/${encodeURIComponent(account.zohoAccountId)}/folders/${encodeURIComponent(folderId)}/messages/${encodeURIComponent(messageId)}/content`,
@@ -231,6 +241,9 @@ export class MailService {
         content: dto.content,
         format: 'plaintext',
       });
+    } else if (account.provider === 'outlook') {
+      messageId = (await this.outlook.send(account, dto)).messageId;
+      this.invalidate(id);
     } else {
       const data = (await this.zoho.request(
         account,
@@ -285,6 +298,7 @@ export class MailService {
   reauthorize(id: string, req: Request) {
     this.requireLiveBinding();
     const account = this.account(id);
+    if (account.provider === 'outlook') return this.outlook.reauthorize(account, req);
     const credentials = this.zoho.credentialsFor(account);
     return this.beginBinding(
       req,
@@ -297,7 +311,7 @@ export class MailService {
   private requireLiveBinding() {
     if (!this.config.live)
       throw new BadRequestException(
-        '演示模式使用示例邮箱。切换真实模式后即可连接 Zoho',
+        '演示模式使用示例邮箱。切换真实模式后即可连接邮箱',
       );
   }
   private beginBinding(
@@ -310,6 +324,7 @@ export class MailService {
     const state = this.sessions.createState(req);
     this.store.saveBinding({
       stateHash: createHash('sha256').update(state).digest('hex'),
+      provider: 'zoho',
       email,
       clientId,
       encryptedClientSecret,
@@ -335,7 +350,7 @@ export class MailService {
         .update(typeof state === 'string' ? state : '')
         .digest('hex'),
     );
-    if (!this.config.live || !validState || !binding)
+    if (!this.config.live || !validState || !binding || (binding.provider && binding.provider !== 'zoho'))
       throw new UnauthorizedException(
         '授权请求已过期或不属于当前会话，请重新填写并连接邮箱',
       );
@@ -408,6 +423,7 @@ export class MailService {
       );
     this.store.saveAccount({
       id,
+      provider: 'zoho',
       email: primaryEmail(item),
       name:
         previous?.name ||
@@ -439,6 +455,15 @@ export class MailService {
     );
     return { success: true };
   }
+  outlookAuthorizationUrl(req: Request, dto: BindAccountDto) {
+    this.requireLiveBinding();
+    return this.outlook.authorizationUrl(req, dto);
+  }
+  async outlookCallback(req: Request, code: string, state: string) {
+    const result = await this.outlook.callback(req, code, state);
+    this.invalidate(result.accountId);
+    return { success: true };
+  }
   private async folder(account: StoredAccount, folder: Folder) {
     let cached = this.folders.get(account.id);
     if (!cached || cached.expires < Date.now()) {
@@ -463,6 +488,7 @@ export class MailService {
     for (const key of this.pages.keys())
       if (key.startsWith(`${id}:`)) this.pages.delete(key);
     this.folders.delete(id);
+    this.outlook.invalidate(id);
   }
   private mapMessage(
     row: Json,

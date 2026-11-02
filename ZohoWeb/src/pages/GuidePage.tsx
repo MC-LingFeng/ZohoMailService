@@ -38,19 +38,19 @@ const questions = [
       '不需要。首次添加邮箱时，在绑定表单中填写邮箱地址、Client ID 和 Client Secret，授权成功后会与该邮箱关联保存。以后重新授权会复用已保存的应用配置。需要更换应用时，进入「邮箱账号」中的「更换应用配置」重新填写；只有新授权成功且邮箱匹配后，才会替换旧配置。',
   },
   {
-    title: '每次切换邮箱，都要重新登录 Zoho 吗？',
+    title: '每次切换邮箱，都要重新登录吗？',
     answer:
-      '不需要。每个独立邮箱首次接入时，需要分别登录 Zoho 并同意授权。授权保存后，ZoHome 会在需要时续期访问令牌，日常切换邮箱无需反复退出、登录。如果你撤销了授权，或 Zoho 要求重新验证，页面会提示重新连接。',
+      '不需要。每个独立邮箱首次接入时，需要分别登录 Zoho 或 Microsoft 并同意授权。授权保存后，ZoHome 会在需要时续期访问令牌，日常切换邮箱无需反复退出、登录。如果你撤销了授权，或邮箱服务要求重新验证，页面会提示重新连接。',
   },
   {
     title: '演示模式会读取我的邮箱或发送真实邮件吗？',
     answer:
-      '演示模式只使用示例账号和示例邮件，不会连接 Zoho。发件操作也只会模拟发送，方便你熟悉整个流程。接入真实账号前，需要由管理员完成服务端配置，并切换到真实邮箱模式。',
+      '演示模式只使用示例账号和示例邮件，不会连接真实邮箱。发件操作也只会模拟发送，方便你熟悉整个流程。接入真实账号前，需要由管理员完成服务端配置，并切换到真实邮箱模式。',
   },
   {
     title: '管理 2000 个邮箱，所有邮件都会实时刷新吗？',
     answer:
-      '当前版本按需读取你正在查看的邮箱，并使用缓存减少重复请求。手动刷新只针对当前账号，不会同时刷新全部邮箱。2000 个账号的授权规模、可用额度和刷新速度仍需实际验证，不能按账号数量直接累加 Zoho 的 API 配额。',
+      '当前版本按需读取你正在查看的邮箱，并使用缓存减少重复请求。手动刷新只针对当前账号，不会同时刷新全部邮箱。2000 个账号的授权规模、可用额度和刷新速度仍需实际验证，不能按账号数量直接累加邮箱服务的 API 配额。',
   },
   {
     title: '为什么会出现读取失败或需要重新授权？',
@@ -60,7 +60,7 @@ const questions = [
   {
     title: '需要配置 IMAP、SMTP 或把邮箱密码交给 ZoHome 吗？',
     answer:
-      '本系统通过 Zoho Mail 官方 API 读取和发送邮件，不需要配置 IMAP 或 SMTP。连接邮箱时，你会前往 Zoho 官方页面登录并授权，ZoHome 使用授权令牌访问邮箱。ZoHome 的系统访问密码与 Zoho 邮箱密码是两回事。',
+      '本系统通过 Zoho Mail API 或 Microsoft Graph 读取和发送邮件，不需要配置 IMAP 或 SMTP。连接邮箱时，你会前往对应服务的官方页面登录并授权，ZoHome 使用授权令牌访问邮箱。ZoHome 的系统访问密码与邮箱密码是两回事。',
   },
 ];
 
@@ -122,10 +122,11 @@ function Instruction({
 }
 
 export default function GuidePage() {
+  const [setupProvider, setSetupProvider] = useState<'zoho' | 'outlook'>('zoho');
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
   const callbackUrl = new URL(
-    '/api/auth/zoho/callback',
+    `/api/auth/${setupProvider}/callback`,
     window.location.origin,
   ).toString();
 
@@ -194,15 +195,15 @@ export default function GuidePage() {
             number="01"
             icon={Plus}
             title="把第一个邮箱带回家"
-            description="填写这个邮箱的应用配置，完成一次 Zoho 授权，之后就可以直接切换。"
+            description="选择邮箱服务并填写应用配置，完成一次官方授权，之后就可以直接切换。"
           >
             <ol className="space-y-3">
               <Instruction number={1}>
-                进入「邮箱账号」，点击「添加邮箱」，填写要绑定的邮箱地址、Client
+                进入「邮箱账号」，点击「添加邮箱」，选择 Zoho 或 Outlook，填写要绑定的邮箱地址、Client
                 ID 和 Client Secret。
               </Instruction>
               <Instruction number={2}>
-                前往 Zoho
+                前往对应服务的
                 官方授权页面，确认登录的邮箱与表单中填写的地址一致，再同意所请求的权限。
               </Instruction>
               <Instruction number={3}>
@@ -216,7 +217,7 @@ export default function GuidePage() {
                 aria-hidden="true"
               />
               <p className="text-xs leading-6 text-muted">
-                邮箱密码只在 Zoho
+                邮箱密码只在邮箱服务的
                 官方页面输入。若浏览器中登录了其他邮箱，系统会拒绝不匹配的授权，并提示重新选择正确账号；不会把它绑定到你填写的地址。
               </p>
             </div>
@@ -230,7 +231,42 @@ export default function GuidePage() {
                 />
               </summary>
               <div className="space-y-4 border-t border-line-soft p-4 text-xs leading-6 text-muted">
-                <p>
+                <label className="block">
+                  <span className="field-label">选择要配置的邮箱服务</span>
+                  <select
+                    className="input"
+                    value={setupProvider}
+                    onChange={(event) => {
+                      setSetupProvider(event.target.value === 'outlook' ? 'outlook' : 'zoho');
+                      setCopied(false);
+                      setCopyError(false);
+                    }}
+                  >
+                    <option value="zoho">Zoho Mail</option>
+                    <option value="outlook">Outlook / Hotmail / Microsoft 365</option>
+                  </select>
+                </label>
+                {setupProvider === 'outlook' ? (
+                  <div className="space-y-2">
+                    <p>
+                      在{' '}
+                      <a
+                        href="https://entra.microsoft.com/"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium text-accent underline underline-offset-4"
+                      >
+                        Microsoft Entra 管理中心
+                      </a>{' '}
+                      注册应用。如需同时接入个人 Outlook、Hotmail 和 Microsoft 365，选择允许任意组织目录及个人 Microsoft 账号登录的类型。
+                    </p>
+                    <p>
+                      添加 Microsoft Graph 委托权限 User.Read、Mail.Read、Mail.Send、offline_access。
+                      创建客户端密码，将 Application (client) ID 和密码值（Value，非 Secret ID）填入「添加邮箱」。组织邮箱可能需要管理员同意。
+                    </p>
+                    <p>在「身份验证」中添加 Web 平台，登记下方回调地址：</p>
+                  </div>
+                ) : <p>
                   在{' '}
                   <a
                     href="https://api-console.zoho.com/"
@@ -242,7 +278,7 @@ export default function GuidePage() {
                   </a>{' '}
                   创建 Server-based Application，取得 Client ID 和 Client
                   Secret，稍后填入「添加邮箱」表单。应用的回调地址须与服务端配置一致，默认本地开发地址为：
-                </p>
+                </p>}
                 <div className="flex items-start gap-2 rounded-lg bg-surface-muted p-3">
                   <code className="min-w-0 flex-1 break-all text-[11px] text-body">
                     {callbackUrl}
@@ -286,8 +322,10 @@ export default function GuidePage() {
                       '设置 64 位十六进制随机密钥，用于加密保存授权',
                     ],
                     [
-                      'ZOHO_REDIRECT_URI',
-                      '与 Zoho 控制台登记的回调地址完全一致',
+                      setupProvider === 'outlook' ? 'OUTLOOK_REDIRECT_URI' : 'ZOHO_REDIRECT_URI',
+                      setupProvider === 'outlook'
+                        ? '与 Microsoft 应用 Web 平台登记的回调地址完全一致'
+                        : '与 Zoho 控制台登记的回调地址完全一致',
                     ],
                   ].map(([name, meaning]) => (
                     <div
@@ -308,12 +346,14 @@ export default function GuidePage() {
                   Refresh Token 加密存入数据库。具体启动命令请参阅项目 README。
                 </p>
                 <a
-                  href="https://www.zoho.com/mail/help/api/using-oauth-2.html"
+                  href={setupProvider === 'outlook'
+                    ? 'https://learn.microsoft.com/graph/auth-v2-user'
+                    : 'https://www.zoho.com/mail/help/api/using-oauth-2.html'}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 font-medium text-accent"
                 >
-                  查看 Zoho 官方授权文档{' '}
+                  查看 {setupProvider === 'outlook' ? 'Microsoft' : 'Zoho'} 官方授权文档{' '}
                   <ExternalLink className="size-3" aria-hidden="true" />
                 </a>
               </div>
@@ -361,7 +401,7 @@ export default function GuidePage() {
                 <p className="text-xs font-medium text-ink">移除账号前确认</p>
                 <p className="mt-1.5 text-xs leading-6 text-muted">
                   从 ZoHome 移除连接会清理本地授权和该邮箱的返利网记录，不会注销
-                  Zoho 邮箱。
+                  邮箱账号。
                 </p>
               </div>
             </div>
@@ -394,7 +434,7 @@ export default function GuidePage() {
                 aria-hidden="true"
               />
               <p className="text-xs leading-6 text-warning-ink/80">
-                读取结果可能来自缓存。刷新针对当前邮箱执行；如果遇到 Zoho
+                读取结果可能来自缓存。刷新针对当前邮箱执行；如果遇到邮箱服务的
                 频率限制，请稍后再试。垃圾邮件也值得定期检查，避免漏掉被误判的重要来信。
               </p>
             </div>
@@ -435,7 +475,7 @@ export default function GuidePage() {
               )}
             </div>
             <p className="text-xs leading-6 text-muted">
-              演示模式中的发送仅为模拟。真实模式使用对应账号发送邮件，仍受 Zoho
+              演示模式中的发送仅为模拟。真实模式使用对应账号发送邮件，仍受邮箱服务
               的账号额度和服务规则约束。
             </p>
           </StepSection>

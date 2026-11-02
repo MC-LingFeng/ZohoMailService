@@ -146,19 +146,21 @@ export class AccessGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<Request>();
     const origin = req.headers.origin;
     const allowed = new URL(this.config.frontendUrl).origin;
+    const oauthCallback = req.path === '/api/auth/zoho/callback' ||
+      req.path === '/api/auth/outlook/callback';
     // Also reject a hostile Origin on reads: OAuth URL generation creates state.
     if (origin && origin !== allowed)
       throw new ForbiddenException('请求来源不被允许');
     if (
       req.headers['sec-fetch-site'] === 'cross-site' &&
-      req.path !== '/api/auth/zoho/callback'
+      !oauthCallback
     ) {
       throw new ForbiddenException('不接受跨站请求');
     }
     const open =
       req.path === '/api/status' ||
       (req.path === '/api/session' && req.method === 'POST') ||
-      req.path === '/api/auth/zoho/callback';
+      oauthCallback;
     if (!open && !this.sessions.authenticated(req))
       throw new UnauthorizedException('请先登录 ZoHome');
     return true;

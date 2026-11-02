@@ -16,6 +16,8 @@ import { MailService } from '../src/mail.service';
 import { decryptToken, encryptToken, SessionService } from '../src/security';
 import { MailStore } from '../src/store';
 import { ZohoClient } from '../src/zoho';
+import { OutlookClient } from '../src/outlook';
+import { OutlookMailService } from '../src/outlook-mail.service';
 
 function harness() {
   const dir = mkdtempSync(join(tmpdir(), 'zohome-bind-'));
@@ -46,7 +48,8 @@ function harness() {
     ip: 'test',
   } as unknown as ExpressRequest;
   const zoho = new ZohoClient(config, store);
-  const mail = new MailService(config, store, zoho, sessions);
+  const outlook = new OutlookMailService(config, store, new OutlookClient(config, store), sessions);
+  const mail = new MailService(config, store, zoho, sessions, outlook);
   return {
     dir,
     config,

@@ -155,6 +155,7 @@ export default function MailPage() {
       await api(`/accounts/${encodeURIComponent(selectedId)}/sync`, {
         method: 'POST',
       });
+      setStart(1);
       setVersion((value) => value + 1);
       await refresh();
       toast('已刷新当前邮箱，正在获取邮件列表。');
@@ -229,7 +230,7 @@ export default function MailPage() {
         <div className="panel">
           <EmptyState
             title="从连接一个邮箱开始"
-            description="添加 Zoho 账号后，就可以查看收件箱、垃圾邮件并发送邮件。"
+            description="添加 Zoho 或 Outlook 账号后，就可以查看收件箱、垃圾邮件并发送邮件。"
             action={
               <Link to="/accounts" className="btn-primary">
                 前往添加邮箱
@@ -305,6 +306,15 @@ export default function MailPage() {
                 {error && (
                   <div className="p-4">
                     <ErrorNotice message={error} />
+                    {start > 1 && (
+                      <button
+                        className="btn-secondary mt-3"
+                        disabled={loading || syncing}
+                        onClick={() => setStart(1)}
+                      >
+                        回到第一页
+                      </button>
+                    )}
                   </div>
                 )}
                 <div className="grid min-h-[590px] lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
@@ -503,7 +513,7 @@ export default function MailPage() {
                               {detail.hasAttachment && (
                                 <p className="mt-8 flex items-center gap-2 rounded-lg bg-surface-muted p-3 text-[10px] text-muted">
                                   <Paperclip size={13} />
-                                  此邮件包含附件，可前往 Zoho 网页版下载。
+                                  此邮件包含附件，可前往对应邮箱的网页版下载。
                                 </p>
                               )}
                             </div>

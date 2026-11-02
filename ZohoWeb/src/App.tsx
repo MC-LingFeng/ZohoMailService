@@ -241,7 +241,7 @@ function Shell() {
           </span>
           <span className="flex items-center gap-1.5">
             <CheckCircle2 size={11} className="text-accent" />
-            Powered by Zoho Mail API
+            Zoho Mail API · Microsoft Graph
             <span className="ml-2 text-faint">v0.1</span>
           </span>
         </footer>
@@ -315,7 +315,7 @@ function LoginPage({ onLogin }: { onLogin: () => Promise<void> }) {
           </p>
         </div>
         <p className="mt-6 text-center text-[10px] text-subtle">
-          通过 Zoho 官方授权连接 · 服务端加密保存授权
+          通过邮箱官方授权连接 · 服务端加密保存授权
         </p>
       </div>
     </div>

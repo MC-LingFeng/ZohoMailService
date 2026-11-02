@@ -97,6 +97,12 @@ export class AppController {
   ) {
     return this.mail.authorizationUrl(req, dto);
   }
+  @Post('auth/outlook/url') outlookAuthorization(
+    @Req() req: Request,
+    @Body() dto: BindAccountDto,
+  ) {
+    return this.mail.outlookAuthorizationUrl(req, dto);
+  }
   @Post('accounts/:id/reauthorize') reauthorize(
     @Param('id') id: string,
     @Req() req: Request,
@@ -122,5 +128,21 @@ export class AppController {
     res.redirect(
       `${this.config.frontendUrl.replace(/\/$/, '')}/accounts?${result}`,
     );
+  }
+  @Get('auth/outlook/callback') async outlookCallback(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Query('code') code: string,
+    @Query('state') state: string,
+  ) {
+    let result: string;
+    try {
+      await this.mail.outlookCallback(req, code, state);
+      result = 'connected=1';
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Outlook 邮箱连接失败，请重试';
+      result = `error=${encodeURIComponent(message)}`;
+    }
+    res.redirect(`${this.config.frontendUrl.replace(/\/$/, '')}/accounts?provider=outlook&${result}`);
   }
 }

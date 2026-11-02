@@ -34,8 +34,42 @@ export function formatConversionApprox(cost: number, revenue: number): string {
 }
 export type ComparisonSort = 'totalRevenue' | 'totalCost' | 'conversion';
 
-export function comparisonKey(item: RebateComparison): string {
-  return JSON.stringify([item.accountId, item.siteName, item.domain, item.offerName]);
+export interface OfferComparison {
+  offerName: string;
+  totalRevenue: number;
+  settledRevenue: number;
+  unsettledRevenue: number;
+  totalCost: number;
+  recordCount: number;
+}
+
+// The API comparison covers all filtered records, including records outside the current page.
+export function aggregateOfferComparisons(comparison: RebateComparison[]): OfferComparison[] {
+  const offers = new Map<string, {
+    revenue: bigint; settled: bigint; unsettled: bigint; cost: bigint; recordCount: number;
+  }>();
+  for (const item of comparison) {
+    const name = item.offerName.trim();
+    const totals = offers.get(name) || { revenue: 0n, settled: 0n, unsettled: 0n, cost: 0n, recordCount: 0 };
+    totals.revenue += cents(item.totalRevenue);
+    totals.settled += cents(item.settledRevenue);
+    totals.unsettled += cents(item.unsettledRevenue);
+    totals.cost += cents(item.totalCost);
+    totals.recordCount += item.recordCount;
+    offers.set(name, totals);
+  }
+  return [...offers].map(([offerName, totals]) => ({
+    offerName, totalRevenue: Number(totals.revenue) / 100,
+    settledRevenue: Number(totals.settled) / 100,
+    unsettledRevenue: Number(totals.unsettled) / 100,
+    totalCost: Number(totals.cost) / 100, recordCount: totals.recordCount,
+  }));
+}
+
+export function comparisonKey(item: RebateComparison | OfferComparison): string {
+  return JSON.stringify('accountId' in item
+    ? [item.accountId, item.siteName, item.domain, item.offerName]
+    : [item.offerName]);
 }
 
 // Use the same rounded ratio as the displayed 1:x value; zero cost is undefined.
@@ -44,11 +78,11 @@ export function conversionMultiple(cost: number, revenue: number): number | null
   return formatted === '—' ? null : Number(formatted);
 }
 
-export function sortComparisons(
-  comparison: RebateComparison[],
+export function sortComparisons<T extends RebateComparison | OfferComparison>(
+  comparison: T[],
   sort: ComparisonSort,
-): RebateComparison[] {
-  const value = (item: RebateComparison) =>
+): T[] {
+  const value = (item: T) =>
     sort === 'conversion'
       ? conversionMultiple(item.totalCost, item.totalRevenue)
       : item[sort];

@@ -1,7 +1,9 @@
 export type Folder = 'inbox' | 'spam' | 'sent';
+export type MailProvider = 'zoho' | 'outlook';
 export type AccountStatus = 'connected' | 'reauthorize' | 'error';
 export interface Account {
   id: string;
+  provider?: MailProvider;
   email: string;
   name: string;
   group: string;
@@ -14,6 +16,7 @@ export interface Account {
 }
 export interface StoredAccount extends Account {
   zohoAccountId: string;
+  outlookUserId?: string;
   encryptedRefreshToken: string | null;
   clientId?: string;
   encryptedClientSecret?: string;
@@ -24,6 +27,8 @@ export interface OAuthCredentials {
 }
 export interface PendingBinding {
   stateHash: string;
+  provider?: MailProvider;
+  encryptedCodeVerifier?: string;
   email: string;
   clientId: string;
   encryptedClientSecret: string;

@@ -11,6 +11,8 @@ import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
 import { GoogleAdsClient } from './google-ads';
 import { RebateCostsService } from './rebate-costs.service';
+import { OutlookClient } from './outlook';
+import { OutlookMailService } from './outlook-mail.service';
 
 @Module({
   controllers: [AppController, RebatesController, SettingsController],
@@ -23,6 +25,8 @@ import { RebateCostsService } from './rebate-costs.service';
     SettingsService,
     GoogleAdsClient,
     RebateCostsService,
+    OutlookClient,
+    OutlookMailService,
     { provide: APP_GUARD, useClass: AccessGuard },
   ],
 })

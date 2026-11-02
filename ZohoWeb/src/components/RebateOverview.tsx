@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownUp, BarChart3, CircleDollarSign, Wallet } from 'lucide-react';
+import { ArrowDownUp, Banknote, BarChart3, CircleDollarSign, Wallet } from 'lucide-react';
 import { init, use, type ComposeOption } from 'echarts/core';
 import { BarChart, LineChart, type BarSeriesOption, type LineSeriesOption } from 'echarts/charts';
 import {
@@ -16,6 +16,7 @@ import {
 } from 'echarts/components';
 import { SVGRenderer } from 'echarts/renderers';
 import {
+  aggregateOfferComparisons,
   comparisonKey,
   conversionMultiple,
   formatConversion,
@@ -51,8 +52,11 @@ export default function RebateOverview({ data, loading }: {
   const { resolved } = useTheme();
   const [sort, setSort] = useState<ComparisonSort>('totalRevenue');
   const container = useRef<HTMLDivElement>(null);
-  const items = useMemo(() => sortComparisons(data?.comparison ?? [], sort), [data, sort]);
+  const items = useMemo(() => sortComparisons(aggregateOfferComparisons(data?.comparison ?? []), sort), [data, sort]);
   const totals = data?.summary;
+  const netProfit = totals
+    ? (Math.round(totals.totalRevenue * 100) - Math.round(totals.totalCost * 100)) / 100
+    : null;
 
   useEffect(() => {
     const element = container.current;
@@ -86,7 +90,7 @@ export default function RebateOverview({ data, loading }: {
       textStyle: { fontFamily, color: muted, fontSize: 11 },
       aria: {
         enabled: true,
-        label: { description: '按邮箱、返利网、域名和 Offer 分别比较。柱形展示已结款收益、未结款收益和成本，折线展示收益除以成本的倍数。完整数值见下方对比明细。' },
+        label: { description: '合并当前筛选结果中的同名 Offer。柱形展示合计已结款收益、未结款收益和成本，折线展示合计收益除以合计成本的倍数。完整数值见下方对比明细。' },
       },
       legend: {
         type: 'scroll', top: 0, left: 0, right: 0,
@@ -114,8 +118,6 @@ export default function RebateOverview({ data, loading }: {
           content.style.overflowY = 'auto';
           content.textContent = [
             item.offerName || '未填写 Offer',
-            `${item.siteName} · ${item.domain}`,
-            item.accountEmail,
             `收益  ${amount(item.totalRevenue)}`,
             `已结款  ${amount(item.settledRevenue)}    未结款  ${amount(item.unsettledRevenue)}`,
             `成本（USD）  ${amount(item.totalCost)}`,
@@ -136,7 +138,7 @@ export default function RebateOverview({ data, loading }: {
             // ECharts resets the label index inside the zoomed window.
             const item = itemByKey.get(value);
             if (!item) return '';
-            return [shorten(item.offerName || '未填写 Offer', 16), shorten(item.siteName, 16), shorten(item.accountEmail, 21)].join('\n');
+            return shorten(item.offerName || '未填写 Offer', 24);
           },
         },
       },
@@ -190,12 +192,13 @@ export default function RebateOverview({ data, loading }: {
   const cards = [
     { title: '总收益', value: totals ? amount(totals.totalRevenue) : '—', Icon: CircleDollarSign, color: 'text-accent', caption: totals ? `已结款 ${amount(totals.settledRevenue)} · 未结款 ${amount(totals.unsettledRevenue)}` : '已结款与未结款收益' },
     { title: '总成本（USD）', value: totals ? amount(totals.totalCost) : '—', Icon: Wallet, color: 'text-warning-ink', caption: '包含已封户记录的成本' },
+    { title: '净利润（USD）', value: netProfit === null ? '—' : amount(netProfit), Icon: Banknote, color: netProfit !== null && netProfit < 0 ? 'text-danger-ink' : 'text-accent', caption: '总收益 − 总成本' },
     { title: '整体转化', value: totals ? formatConversion(totals.totalCost, totals.totalRevenue) : '—', Icon: ArrowDownUp, color: 'text-info-ink', caption: totals ? `成本:收益 · ${totals.totalCost > 0 ? `≈ 1:${formatConversionApprox(totals.totalCost, totals.totalRevenue)}` : '成本为 0，倍数为 —'}` : '按汇总成本与收益计算' },
   ];
 
   return (
     <div className="mb-5 space-y-4">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ title, value, Icon, color, caption }) => (
           <section className="panel min-w-0 p-5" aria-label={title} key={title}>
             <div className="flex items-center justify-between gap-3">
@@ -212,7 +215,7 @@ export default function RebateOverview({ data, loading }: {
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 id="offer-comparison-heading" className="section-title">Offer 收益、成本与转化对比</h2>
-            <p className="mt-1.5 text-[11px] leading-6 text-muted">按邮箱、返利网 / 域名与 Offer 分别统计，同一组合的多条记录汇总展示。</p>
+            <p className="mt-1.5 text-[11px] leading-6 text-muted">合并当前筛选结果中的同名 Offer，统一汇总收益和成本；转化按合计收益 ÷ 合计成本计算。</p>
           </div>
           <label className="flex items-center gap-2 text-[11px] text-muted">
             排序
@@ -231,20 +234,19 @@ export default function RebateOverview({ data, loading }: {
         ) : (
           <>
             <div ref={container} className="h-[440px] w-full sm:h-[460px]" />
-            <p className="mt-2 text-[10px] leading-5 text-subtle">共 {items.length} 个对比项 · 悬浮查看 Offer、返利网、域名、邮箱及完整金额；拖动底部滑块可查看其余项目。左右轴分别为金额与转化倍数。</p>
+            <p className="mt-2 text-[10px] leading-5 text-subtle">共 {items.length} 个 Offer · 悬浮查看合计收益、成本与转化；拖动底部滑块可查看其余 Offer。左右轴分别为金额与转化倍数。</p>
             <details className="mt-4 border-t border-line-soft pt-3">
               <summary className="cursor-pointer text-xs text-muted">查看全部对比明细（{items.length} 项）</summary>
               <div className="mt-3 overflow-x-auto" tabIndex={0} role="region" aria-label="Offer 汇总对比明细，可左右滚动">
-                <table className="w-full min-w-[920px] text-left text-[11px]">
-                  <caption className="sr-only">全部筛选结果按邮箱、返利网、域名及 Offer 汇总，顺序与图表一致</caption>
+                <table className="w-full min-w-[760px] text-left text-[11px]">
+                  <caption className="sr-only">当前筛选结果按同名 Offer 合并收益与成本，顺序与图表一致</caption>
                   <thead className="bg-surface-muted text-muted">
-                    <tr>{['Offer / 返利网', '邮箱', '总收益', '已结款 / 未结款', '成本（USD）', '转化（成本:收益）', '记录数'].map((label) => <th className="px-3 py-3 font-medium" key={label}>{label}</th>)}</tr>
+                    <tr>{['Offer', '总收益', '已结款 / 未结款', '成本（USD）', '转化（成本:收益）', '记录数'].map((label) => <th className="px-3 py-3 font-medium" key={label}>{label}</th>)}</tr>
                   </thead>
                   <tbody>
                     {items.map((item) => (
                       <tr className="border-b border-line-soft" key={comparisonKey(item)}>
-                        <td className="max-w-64 break-words px-3 py-3"><span className="font-medium">{item.offerName || '未填写 Offer'}</span><span className="mt-1 block text-muted">{item.siteName} · {item.domain}</span></td>
-                        <td className="max-w-56 break-all px-3 py-3 text-body">{item.accountEmail}</td>
+                        <td className="max-w-64 break-words px-3 py-3 font-medium">{item.offerName || '未填写 Offer'}</td>
                         <td className="px-3 py-3 tabular-nums text-accent">{amount(item.totalRevenue)}</td>
                         <td className="px-3 py-3 tabular-nums text-muted">{amount(item.settledRevenue)} / {amount(item.unsettledRevenue)}</td>
                         <td className="px-3 py-3 tabular-nums text-warning-ink">{amount(item.totalCost)}</td>

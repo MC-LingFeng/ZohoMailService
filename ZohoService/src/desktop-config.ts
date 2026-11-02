@@ -65,6 +65,10 @@ export function loadDesktopConfiguration(
         '# FRONTEND_URL=http://localhost:3001',
         '# 授权回调地址（可选）',
         '# ZOHO_REDIRECT_URI=http://localhost:3001/api/auth/zoho/callback',
+        '# Outlook 回调地址（可选，默认本机服务端口）',
+        '# OUTLOOK_REDIRECT_URI=http://localhost:3001/api/auth/outlook/callback',
+        '# Microsoft 账户范围（common 兼容个人和企业邮箱）',
+        'OUTLOOK_TENANT=common',
         '',
       ].join('\n'),
       { encoding: 'utf8', mode: 0o600, flag: 'wx' },
@@ -128,6 +132,10 @@ export function loadDesktopConfiguration(
       ? saved.DATA_DIR
       : resolve(home, saved.DATA_DIR)
     : join(home, 'data');
+  const outlookCallback = new URL(saved.OUTLOOK_REDIRECT_URI || `${frontend.origin}/api/auth/outlook/callback`);
+  if (outlookCallback.origin !== frontend.origin || outlookCallback.pathname !== '/api/auth/outlook/callback' ||
+      outlookCallback.search || outlookCallback.hash || outlookCallback.username || outlookCallback.password)
+    throw new Error(`桌面版 OUTLOOK_REDIRECT_URI 必须为 ${frontend.origin}/api/auth/outlook/callback，请检查 ${configPath}`);
   return {
     home,
     configPath,
@@ -137,6 +145,8 @@ export function loadDesktopConfiguration(
       PORT: String(port),
       FRONTEND_URL: frontend.origin,
       ZOHO_REDIRECT_URI: callback.toString(),
+      OUTLOOK_REDIRECT_URI: outlookCallback.toString(),
+      OUTLOOK_TENANT: saved.OUTLOOK_TENANT || 'common',
       DATA_DIR: dataDir,
       APP_PASSWORD: saved.APP_PASSWORD,
       TOKEN_ENCRYPTION_KEY: saved.TOKEN_ENCRYPTION_KEY,

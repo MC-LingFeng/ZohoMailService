@@ -2,6 +2,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
+  IsEmail,
   IsFQDN,
   IsIn,
   IsInt,
@@ -44,9 +45,14 @@ function normalizeDomain({ value }: { value: unknown }) {
 export class RebateDto implements RebateInput {
   @Transform(trim)
   @IsString()
-  @IsNotEmpty()
   @MaxLength(256)
-  accountId!: string;
+  accountId = '';
+
+  @IsOptional()
+  @Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
+  @IsEmail({}, { message: '请填写有效的邮箱地址' })
+  @MaxLength(254)
+  accountEmail?: string;
 
   @Transform(trim)
   @IsString()

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  aggregateOfferComparisons,
   comparisonKey,
   conversionMultiple,
   formatConversion,
@@ -81,7 +82,7 @@ test('approximate conversion keeps large ratios as plain ungrouped decimals', ()
 
 function comparison(overrides: Partial<RebateComparison> = {}): RebateComparison {
   return {
-    accountId: 'mail-1', accountEmail: 'test@example.com', accountName: 'Test',
+    accountId: 'mail-1', accountEmail: 'test@example.com', accountName: 'Test', accountUnknown: false,
     siteName: '返利网', domain: 'rewards.example.com', offerName: 'Offer A',
     totalRevenue: 100, totalCost: 20, settledRevenue: 40, unsettledRevenue: 60,
     conversionRate: 20, recordCount: 1, ...overrides,
@@ -101,6 +102,49 @@ test('comparison identities distinguish offers, sites, domains and mailboxes', (
     comparisonKey(comparison({ siteName: 'a|b', domain: 'c' })),
     comparisonKey(comparison({ siteName: 'a', domain: 'b|c' })),
   );
+});
+
+test('Offer comparison merges mailboxes and sites, then calculates conversion from the combined money', () => {
+  const rows = [
+    comparison({ offerName: ' Offer A ', totalRevenue: 100, totalCost: 10, settledRevenue: 40, unsettledRevenue: 60, recordCount: 2 }),
+    comparison({ accountId: 'mail-2', accountEmail: 'unknown@example.com', accountUnknown: true,
+      siteName: '另一返利网', domain: 'other.example.com', offerName: 'Offer A',
+      totalRevenue: 0, totalCost: 90, settledRevenue: 0, unsettledRevenue: 0, recordCount: 3 }),
+    comparison({ offerName: 'Offer B', totalRevenue: 80, totalCost: 20, settledRevenue: 80, unsettledRevenue: 0 }),
+  ];
+  const before = structuredClone(rows);
+  const result = aggregateOfferComparisons(rows);
+  assert.deepEqual(result, [
+    { offerName: 'Offer A', totalRevenue: 100, totalCost: 100, settledRevenue: 40, unsettledRevenue: 60, recordCount: 5 },
+    { offerName: 'Offer B', totalRevenue: 80, totalCost: 20, settledRevenue: 80, unsettledRevenue: 0, recordCount: 1 },
+  ]);
+  assert.equal(formatConversion(result[0].totalCost, result[0].totalRevenue), '1:1');
+  assert.equal(conversionMultiple(result[0].totalCost, result[0].totalRevenue), 1);
+  assert.deepEqual(sortComparisons(result, 'conversion').map((item) => item.offerName), ['Offer B', 'Offer A']);
+  assert.deepEqual(rows, before);
+});
+
+test('Offer totals preserve cents and settlement totals across all comparison groups', () => {
+  const result = aggregateOfferComparisons([
+    comparison({ totalRevenue: 0.1, totalCost: 0.1, settledRevenue: 0.1, unsettledRevenue: 0, recordCount: 20 }),
+    comparison({ accountId: 'mail-2', totalRevenue: 0.2, totalCost: 0.2, settledRevenue: 0, unsettledRevenue: 0.2, recordCount: 30 }),
+  ]);
+  assert.deepEqual(result, [{ offerName: 'Offer A', totalRevenue: 0.3, totalCost: 0.3, settledRevenue: 0.1, unsettledRevenue: 0.2, recordCount: 50 }]);
+});
+
+test('Offer comparison keeps separate names, combines blanks and handles zero cost and empty filtered results', () => {
+  assert.deepEqual(aggregateOfferComparisons([]), []);
+  const result = aggregateOfferComparisons([
+    comparison({ offerName: '', totalRevenue: 0, totalCost: 0, settledRevenue: 0, unsettledRevenue: 0 }),
+    comparison({ offerName: '  ', totalRevenue: 0, totalCost: 5, settledRevenue: 0, unsettledRevenue: 0 }),
+    comparison({ offerName: 'Offer A', totalRevenue: 10, totalCost: 0, settledRevenue: 10, unsettledRevenue: 0 }),
+    comparison({ offerName: 'offer a' }),
+  ]);
+  assert.equal(result.length, 3);
+  assert.equal(result[0].recordCount, 2);
+  assert.equal(result[0].totalCost, 5);
+  assert.equal(conversionMultiple(result[1].totalCost, result[1].totalRevenue), null);
+  assert.equal(new Set(result.map(comparisonKey)).size, result.length);
 });
 
 test('comparison sorting retains all offers and leaves source data untouched', () => {

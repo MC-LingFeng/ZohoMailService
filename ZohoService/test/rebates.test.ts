@@ -255,6 +255,7 @@ test('rebate comparison separates offers, sites, domains and mailboxes while agg
       accountId: 'demo-2',
       accountEmail: 'design.studio@zohomail.com',
       accountName: '设计团队',
+      accountUnknown: false,
       siteName: 'Alpha',
       domain: 'rewards.example.com',
       offerName: 'Offer A',
@@ -276,6 +277,7 @@ test('rebate comparison separates offers, sites, domains and mailboxes while agg
       accountId: 'demo-1',
       accountEmail: 'alex.chen@zohomail.com',
       accountName: 'Alex Chen',
+      accountUnknown: false,
       siteName: 'Alpha',
       domain: 'rewards.example.com',
       offerName: 'Offer A',
@@ -513,6 +515,7 @@ test('rebate options deduplicate normalized saved values across all mailboxes an
   };
   try {
     assert.deepEqual(await readOptions(), {
+      accounts: app.get(MailStore).publicAccounts().map(({ id, email, name, group }) => ({ id, email, name, group, unknown: false })),
       siteNames: [],
       domains: [],
       offerNames: [],
@@ -541,6 +544,7 @@ test('rebate options deduplicate normalized saved values across all mailboxes an
     assert.equal(page.records.length, 1);
     assert.equal(page.total, 2);
     assert.deepEqual(await readOptions(), {
+      accounts: app.get(MailStore).publicAccounts().map(({ id, email, name, group }) => ({ id, email, name, group, unknown: false })),
       siteNames: ['Alpha', 'Beta'],
       domains: ['other.example.com', 'rewards.example.com'],
       offerNames: ['Offer A'],
@@ -555,6 +559,7 @@ test('rebate options deduplicate normalized saved values across all mailboxes an
     );
     const latest = await readOptions();
     assert.deepEqual(latest, {
+      accounts: app.get(MailStore).publicAccounts().map(({ id, email, name, group }) => ({ id, email, name, group, unknown: false })),
       siteNames: ['Alpha', 'Beta', 'Gamma'],
       domains: ['new.example.com', 'other.example.com', 'rewards.example.com'],
       offerNames: ['Offer A', 'Offer B'],
@@ -673,6 +678,7 @@ test('rebate overview excludes banned revenue, retains all costs and separates s
       );
       assert.deepEqual(comparison, {
         accountId: 'demo-1',
+        accountUnknown: false,
         accountEmail: 'alex.chen@zohomail.com',
         accountName: 'Alex Chen',
         siteName: input.siteName,

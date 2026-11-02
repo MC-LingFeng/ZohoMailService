@@ -29,6 +29,7 @@ import type { Account } from '../types';
 
 const hasSavedCredentials = (account?: Account | null) =>
   account?.oauthSource === 'account' || account?.oauthSource === 'legacy';
+const providerNames = { zoho: 'Zoho', outlook: 'Microsoft Outlook' };
 
 export default function AccountsPage() {
   const { accounts, status, loading, refresh, toast } = useWorkspace();
@@ -37,6 +38,7 @@ export default function AccountsPage() {
   const [page, setPage] = useState(0);
   const [connect, setConnect] = useState(false);
   const [bindingAccount, setBindingAccount] = useState<Account | null>(null);
+  const [bindingProvider, setBindingProvider] = useState<'zoho' | 'outlook'>('zoho');
   const [bindingEmail, setBindingEmail] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
@@ -55,6 +57,7 @@ export default function AccountsPage() {
       setParams({}, { replace: true });
     }
     if (params.get('error')) {
+      setBindingProvider(params.get('provider') === 'outlook' ? 'outlook' : 'zoho');
       setError(`授权未完成：${params.get('error')}`);
       setConnect(true);
       setParams({}, { replace: true });
@@ -69,7 +72,7 @@ export default function AccountsPage() {
       accounts.filter(
         (account) =>
           (group === '全部分组' || (account.group || '未分组') === group) &&
-          `${account.name} ${account.email} ${account.group}`
+          `${account.name} ${account.email} ${account.group} ${providerNames[account.provider || 'zoho']}`
             .toLowerCase()
             .includes(search.toLowerCase()),
       ),
@@ -83,6 +86,7 @@ export default function AccountsPage() {
   const visible = filtered.slice(currentPage * 9, (currentPage + 1) * 9);
   const openBinding = (account?: Account, replaceCredentials = false) => {
     setBindingAccount(account || null);
+    setBindingProvider(account?.provider || 'zoho');
     setBindingEmail(account?.email || '');
     setClientId('');
     setClientSecret('');
@@ -111,7 +115,7 @@ export default function AccountsPage() {
       const reuse = useSavedCredentials && bindingAccount;
       const path = reuse
         ? `/accounts/${encodeURIComponent(bindingAccount.id)}/reauthorize`
-        : '/auth/zoho/url';
+        : `/auth/${bindingProvider}/url`;
       const { url } = await api<{ url: string }>(path, {
         method: 'POST',
         body: JSON.stringify(
@@ -125,7 +129,10 @@ export default function AccountsPage() {
         ),
       });
       const target = new URL(url);
-      if (target.origin !== 'https://accounts.zoho.com')
+      const allowedOrigin = bindingProvider === 'outlook'
+        ? 'https://login.microsoftonline.com'
+        : 'https://accounts.zoho.com';
+      if (target.origin !== allowedOrigin || target.username || target.password)
         throw new Error('授权地址不正确');
       setClientSecret('');
       window.location.assign(target.href);
@@ -251,6 +258,7 @@ export default function AccountsPage() {
                 </button>
               </div>
               <div className="mt-4">
+                <span className="badge-muted mb-2">{providerNames[account.provider || 'zoho']}</span>
                 <h2 className="truncate text-sm font-semibold">
                   {account.name || account.email}
                 </h2>
@@ -309,7 +317,7 @@ export default function AccountsPage() {
             description={
               accounts.length
                 ? '试试其他关键词，或切换账号分组。'
-                : '连接第一个 Zoho 邮箱，即可在这里统一管理。'
+                : '连接第一个 Zoho 或 Outlook 邮箱，即可在这里统一管理。'
             }
             action={
               !accounts.length ? (
@@ -360,7 +368,7 @@ export default function AccountsPage() {
       <div className="notice mt-6">
         <ShieldCheck size={17} className="mt-1 shrink-0" />
         <p>
-          通过 Zoho 官方授权连接，ZoHome
+          通过 Zoho 或 Microsoft 官方授权连接，ZoHome
           不保存邮箱登录密码。每个独立账号需要分别授权；日常切换时无需重复登录。
           <Link
             to="/guide#connect"
@@ -385,7 +393,7 @@ export default function AccountsPage() {
           <div>
             <h3 className="text-base font-semibold">为这个邮箱保存应用配置</h3>
             <p className="mt-2 text-xs leading-6 text-muted">
-              填写邮箱及对应的 OAuth 应用信息，再前往 Zoho
+              填写邮箱及对应的 OAuth 应用信息，再前往 {providerNames[bindingProvider]}
               授权。授权成功后，应用配置会与这个邮箱关联保存。
             </p>
           </div>
@@ -399,6 +407,29 @@ export default function AccountsPage() {
             disabled={busy || status.mode === 'demo'}
           >
             <label className="block">
+              <span className="field-label">邮箱服务</span>
+              <select
+                className="input"
+                value={bindingProvider}
+                disabled={Boolean(bindingAccount)}
+                onChange={(event) => {
+                  setBindingProvider(event.target.value === 'outlook' ? 'outlook' : 'zoho');
+                  setClientId('');
+                  setClientSecret('');
+                  setUseSavedCredentials(false);
+                  setError('');
+                }}
+              >
+                <option value="zoho">Zoho Mail</option>
+                <option value="outlook">Outlook / Hotmail / Microsoft 365</option>
+              </select>
+              {bindingProvider === 'outlook' && (
+                <span className="mt-1.5 block text-[10px] leading-5 text-subtle">
+                  支持 Microsoft 个人邮箱及 Microsoft 365 工作或学校邮箱，应用须允许对应账号类型登录。
+                </span>
+              )}
+            </label>
+            <label className="block">
               <span className="field-label">要绑定的邮箱</span>
               <input
                 className="input"
@@ -408,7 +439,7 @@ export default function AccountsPage() {
                 value={bindingEmail}
                 readOnly={Boolean(bindingAccount)}
                 onChange={(event) => setBindingEmail(event.target.value)}
-                placeholder="name@zohomail.com"
+                placeholder={bindingProvider === 'outlook' ? 'name@outlook.com' : 'name@zohomail.com'}
                 autoComplete="off"
               />
               <span className="mt-1.5 block text-[10px] text-subtle">
@@ -445,7 +476,7 @@ export default function AccountsPage() {
                     maxLength={256}
                     value={clientId}
                     onChange={(event) => setClientId(event.target.value)}
-                    placeholder="Zoho 应用的 Client ID"
+                    placeholder={bindingProvider === 'outlook' ? 'Microsoft 应用的 Application (client) ID' : 'Zoho 应用的 Client ID'}
                     autoComplete="off"
                     spellCheck={false}
                   />
@@ -459,7 +490,7 @@ export default function AccountsPage() {
                     maxLength={1024}
                     value={clientSecret}
                     onChange={(event) => setClientSecret(event.target.value)}
-                    placeholder="Zoho 应用的 Client Secret"
+                    placeholder={bindingProvider === 'outlook' ? 'Microsoft 应用的客户端密码值（Value）' : 'Zoho 应用的 Client Secret'}
                     autoComplete="off"
                     spellCheck={false}
                   />
@@ -486,9 +517,10 @@ export default function AccountsPage() {
               会加密保存在服务端。多个邮箱可以填写同一组应用信息，也可以各自使用不同的应用。
             </p>
             <p className="mt-2">
-              请在 Zoho
-              授权页登录上面填写的邮箱，系统会核对实际授权账号。应用须使用
-              Server-based Application，回调地址与使用指南一致。
+              请在 {providerNames[bindingProvider]} 授权页登录上面填写的邮箱，系统会核对实际授权账号。
+              {bindingProvider === 'outlook'
+                ? '在 Microsoft Entra 注册 Web 应用，配置委托权限 User.Read、Mail.Read、Mail.Send 和 offline_access，回调地址与使用指南一致。'
+                : '应用须使用 Server-based Application，回调地址与使用指南一致。'}
             </p>
           </div>
           {error && <ErrorNotice message={error} />}
@@ -512,7 +544,7 @@ export default function AccountsPage() {
               {busy
                 ? '正在保存…'
                 : useSavedCredentials
-                  ? '前往 Zoho 授权'
+                  ? `前往 ${providerNames[bindingProvider]} 授权`
                   : '保存并前往授权'}
               <ExternalLink size={13} />
             </button>

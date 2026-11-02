@@ -14,7 +14,7 @@ function usdCents(campaigns: CampaignCost[]): number | null {
 function allocate(targets: RebateCostTarget[], cents: number) {
   const mailboxes = new Map<string, RebateCostTarget[]>();
   for (const target of targets)
-    mailboxes.set(target.accountId, [...(mailboxes.get(target.accountId) || []), target]);
+    mailboxes.set(target.mailboxKey, [...(mailboxes.get(target.mailboxKey) || []), target]);
   const groups = [...mailboxes].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   return groups.flatMap(([, rows], index) => {
     const share = Math.floor(cents / groups.length) + Number(index < cents % groups.length);

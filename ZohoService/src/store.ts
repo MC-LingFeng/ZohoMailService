@@ -7,7 +7,7 @@ import {
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { AppConfig } from './config';
 import {
   Account,
@@ -30,11 +30,36 @@ import {
   rebateRate,
 } from './rebates.types';
 
+const rebateMailboxId = `COALESCE(r.account_id,zohome_rebate_email_id(r.standalone_email))`;
+const rebateMailboxEmail = `COALESCE(json_extract(a.payload,'$.email'),r.standalone_email)`;
+const rebateMailboxName = `CASE WHEN r.account_id IS NULL THEN r.standalone_email ELSE COALESCE(json_extract(a.payload,'$.name'),'') END`;
+const rebateMailboxGroup = `CASE WHEN r.account_id IS NULL THEN '未知' ELSE COALESCE(json_extract(a.payload,'$.group'),'') END`;
 const rebateSelect = `SELECT r.*,
-  json_extract(a.payload,'$.email') AS account_email,
-  json_extract(a.payload,'$.name') AS account_name,
-  json_extract(a.payload,'$.group') AS account_group
-  FROM rebate_registrations r JOIN accounts a ON a.id=r.account_id`;
+  ${rebateMailboxId} AS rebate_account_id,
+  ${rebateMailboxEmail} AS account_email,
+  ${rebateMailboxName} AS account_name,
+  ${rebateMailboxGroup} AS account_group
+  FROM rebate_registrations r LEFT JOIN accounts a ON a.id=r.account_id`;
+
+const standaloneId = (email: string) => `rebate-email:${createHash('sha256').update(email).digest('hex')}`;
+const rebateTable = (name: string) => `CREATE TABLE ${name} (
+  id TEXT PRIMARY KEY,
+  account_id TEXT REFERENCES accounts(id) ON DELETE CASCADE,
+  standalone_email TEXT NOT NULL DEFAULT '',
+  site_name TEXT NOT NULL,
+  domain TEXT NOT NULL,
+  registered_at TEXT NOT NULL,
+  offer_name TEXT NOT NULL DEFAULT '',
+  revenue_cents INTEGER NOT NULL DEFAULT 0 CHECK(revenue_cents>=0),
+  cost_cents INTEGER NOT NULL DEFAULT 0 CHECK(cost_cents>=0),
+  settled INTEGER NOT NULL DEFAULT 0 CHECK(settled IN (0,1)),
+  settlement_cycle TEXT NOT NULL DEFAULT '',
+  banned INTEGER NOT NULL DEFAULT 0 CHECK(banned IN (0,1)),
+  ip TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  CHECK ((account_id IS NOT NULL AND standalone_email='') OR (account_id IS NULL AND standalone_email<>''))
+)`;
 
 const rebateMoneyTotals = `
   TOTAL(CASE WHEN r.banned=0 THEN r.revenue_cents ELSE 0 END) AS revenue_cents,
@@ -60,6 +85,9 @@ export class MailStore implements OnModuleDestroy {
     this.db.function('zohome_lower', { deterministic: true }, (value) =>
       String(value ?? '').toLocaleLowerCase(),
     );
+    this.db.function('zohome_rebate_email_id', { deterministic: true }, (value) =>
+      standaloneId(String(value ?? '').trim().toLowerCase()),
+    );
     chmodSync(file, 0o600);
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
       CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
@@ -68,24 +96,11 @@ export class MailStore implements OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS message_folder ON messages(account_id,folder);
       CREATE TABLE IF NOT EXISTS daily_stats (day TEXT PRIMARY KEY, sent_count INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS pending_bindings (state_hash TEXT PRIMARY KEY, payload TEXT NOT NULL, expires_at INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS rebate_registrations (
-        id TEXT PRIMARY KEY,
-        account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-        site_name TEXT NOT NULL,
-        domain TEXT NOT NULL,
-        registered_at TEXT NOT NULL,
-        offer_name TEXT NOT NULL DEFAULT '',
-        revenue_cents INTEGER NOT NULL DEFAULT 0 CHECK(revenue_cents>=0),
-        cost_cents INTEGER NOT NULL DEFAULT 0 CHECK(cost_cents>=0),
-        settled INTEGER NOT NULL DEFAULT 0 CHECK(settled IN (0,1)),
-        settlement_cycle TEXT NOT NULL DEFAULT '',
-        banned INTEGER NOT NULL DEFAULT 0 CHECK(banned IN (0,1)),
-        ip TEXT NOT NULL DEFAULT '',
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS rebate_account ON rebate_registrations(account_id);
-      CREATE INDEX IF NOT EXISTS rebate_recent ON rebate_registrations(registered_at DESC,created_at DESC,id);`);
+      ${rebateTable('IF NOT EXISTS rebate_registrations')};`);
+    this.migrateRebateEmails();
+    this.db.exec(`CREATE INDEX IF NOT EXISTS rebate_account ON rebate_registrations(account_id);
+      CREATE INDEX IF NOT EXISTS rebate_recent ON rebate_registrations(registered_at DESC,created_at DESC,id);
+      CREATE INDEX IF NOT EXISTS rebate_standalone_email ON rebate_registrations(standalone_email) WHERE account_id IS NULL;`);
     this.cleanupBindings();
     // Migrate existing untrimmed activity from earlier local builds without resetting saved counters.
     const oldCounts = new Map<string, number>();
@@ -107,6 +122,23 @@ export class MailStore implements OnModuleDestroy {
   onModuleDestroy() {
     this.db.close();
   }
+  private migrateRebateEmails() {
+    const columns = this.db.prepare('PRAGMA table_info(rebate_registrations)').all();
+    if (columns.some((column) => column.name === 'standalone_email')) return;
+    // Rebuild only the child table so existing accounts, mail and encryption stay untouched.
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      this.db.exec(`${rebateTable('rebate_registrations_next')};
+        INSERT INTO rebate_registrations_next(
+          id,account_id,site_name,domain,registered_at,offer_name,revenue_cents,cost_cents,
+          settled,settlement_cycle,banned,ip,created_at,updated_at)
+        SELECT id,account_id,site_name,domain,registered_at,offer_name,revenue_cents,cost_cents,
+          settled,settlement_cycle,banned,ip,created_at,updated_at FROM rebate_registrations;
+        DROP TABLE rebate_registrations;
+        ALTER TABLE rebate_registrations_next RENAME TO rebate_registrations;
+        COMMIT;`);
+    } catch (error) { this.db.exec('ROLLBACK'); throw error; }
+  }
   accounts(): StoredAccount[] {
     return this.db
       .prepare('SELECT payload FROM accounts')
@@ -120,11 +152,13 @@ export class MailStore implements OnModuleDestroy {
         account.clientId && account.encryptedClientSecret,
       );
       const legacy =
+        account.provider !== 'outlook' &&
         !account.clientId &&
         !account.encryptedClientSecret &&
         this.config.oauthConfigured;
       return {
         id: account.id,
+        provider: account.provider || 'zoho',
         email: account.email,
         name: account.name,
         group: account.group,
@@ -180,8 +214,9 @@ export class MailStore implements OnModuleDestroy {
     const totalCost = Number(row.cost_cents) / 100;
     return {
       id: String(row.id),
-      accountId: String(row.account_id),
+      accountId: String(row.rebate_account_id),
       accountEmail: String(row.account_email),
+      accountUnknown: row.account_id === null,
       accountName: String(row.account_name || ''),
       accountGroup: String(row.account_group || ''),
       siteName: String(row.site_name),
@@ -213,6 +248,14 @@ export class MailStore implements OnModuleDestroy {
         .all()
         .map((row) => String(row.value));
     return {
+      accounts: [
+        ...this.publicAccounts().map(({ id, email, name, group }) => ({ id, email, name, group, unknown: false })),
+        ...this.db.prepare(`SELECT DISTINCT standalone_email AS email FROM rebate_registrations
+          WHERE account_id IS NULL ORDER BY standalone_email`).all().map((row) => {
+          const email = String(row.email);
+          return { id: standaloneId(email), email, name: email, group: '未知', unknown: true };
+        }),
+      ],
       siteNames: options('site_name'),
       domains: options('domain'),
       offerNames: options('offer_name'),
@@ -220,11 +263,13 @@ export class MailStore implements OnModuleDestroy {
   }
   rebateCostTargets(): RebateCostTarget[] {
     return this.db
-      .prepare('SELECT id,account_id,offer_name,cost_cents,updated_at FROM rebate_registrations')
+      .prepare(`SELECT r.id,${rebateMailboxId} AS account_id,${rebateMailboxEmail} AS account_email,
+        r.offer_name,r.cost_cents,r.updated_at FROM rebate_registrations r LEFT JOIN accounts a ON a.id=r.account_id`)
       .all()
       .map((row) => ({
         id: String(row.id),
         accountId: String(row.account_id),
+        mailboxKey: String(row.account_email).trim().toLowerCase(),
         offerName: String(row.offer_name),
         costCents: Number(row.cost_cents),
         updatedAt: String(row.updated_at),
@@ -258,6 +303,7 @@ export class MailStore implements OnModuleDestroy {
         const latest = currentOffers.get(offerName) || [];
         const unchanged = latest.length === group.length && group.every(({ target }) =>
           latest.some((row) => row.id === target.id && row.accountId === target.accountId &&
+            row.mailboxKey === target.mailboxKey &&
             row.offerName === target.offerName && row.updatedAt === target.updatedAt && row.costCents === target.costCents));
         if (!unchanged) {
           issues.push({
@@ -286,7 +332,7 @@ export class MailStore implements OnModuleDestroy {
     const conditions: string[] = [];
     const parameters: (string | number)[] = [];
     if (query.accountId) {
-      conditions.push('r.account_id=?');
+      conditions.push(`${rebateMailboxId}=?`);
       parameters.push(query.accountId);
     }
     for (const field of ['settled', 'banned'] as const) {
@@ -297,9 +343,9 @@ export class MailStore implements OnModuleDestroy {
     }
     if (query.search) {
       const fields = [
-        "json_extract(a.payload,'$.email')",
-        "json_extract(a.payload,'$.name')",
-        "json_extract(a.payload,'$.group')",
+        rebateMailboxEmail,
+        rebateMailboxName,
+        rebateMailboxGroup,
         'r.site_name',
         'r.domain',
         'r.offer_name',
@@ -312,13 +358,13 @@ export class MailStore implements OnModuleDestroy {
       parameters.push(...fields.map(() => query.search.toLocaleLowerCase()));
     }
     const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
-    const from = ` FROM rebate_registrations r JOIN accounts a ON a.id=r.account_id${where}`;
+    const from = ` FROM rebate_registrations r LEFT JOIN accounts a ON a.id=r.account_id${where}`;
     // SQL filters/aggregates the entire matching set; only the requested page is hydrated.
     // TOTAL avoids SQLite integer-sum overflow with a large imported workspace.
     const totals = this.db
       .prepare(
         `SELECT COUNT(*) AS record_count,
-      COUNT(DISTINCT r.account_id) AS account_count,
+      COUNT(DISTINCT ${rebateMailboxId}) AS account_count,
       ${rebateMoneyTotals}${from}`,
       )
       .get(...parameters)!;
@@ -344,18 +390,19 @@ export class MailStore implements OnModuleDestroy {
       .map((row) => this.rebateRecord(row));
     const comparison: RebateComparison[] = this.db
       .prepare(
-        `SELECT r.account_id,r.site_name,r.domain,r.offer_name,
-      json_extract(a.payload,'$.email') AS account_email,
-      json_extract(a.payload,'$.name') AS account_name,
+        `SELECT ${rebateMailboxId} AS rebate_account_id,r.account_id,r.site_name,r.domain,r.offer_name,
+      ${rebateMailboxEmail} AS account_email,
+      ${rebateMailboxName} AS account_name,
       ${rebateMoneyTotals},
       COUNT(*) AS record_count${from}
-      GROUP BY r.account_id,r.site_name,r.domain,r.offer_name
-      ORDER BY revenue_cents DESC,r.offer_name,r.site_name,r.domain,account_email,r.account_id`,
+      GROUP BY ${rebateMailboxId},r.site_name,r.domain,r.offer_name
+      ORDER BY revenue_cents DESC,r.offer_name,r.site_name,r.domain,account_email,rebate_account_id`,
       )
       .all(...parameters)
       .map((row) => ({
-        accountId: String(row.account_id),
+        accountId: String(row.rebate_account_id),
         accountEmail: String(row.account_email),
+        accountUnknown: row.account_id === null,
         accountName: String(row.account_name || ''),
         siteName: String(row.site_name),
         domain: String(row.domain),
@@ -391,8 +438,6 @@ export class MailStore implements OnModuleDestroy {
     };
   }
   createRebate(input: RebateInput) {
-    if (!this.account(input.accountId))
-      throw new NotFoundException('邮箱账号不存在');
     const id = randomUUID();
     const now = new Date().toISOString();
     this.writeRebate(id, input, now, now);
@@ -401,8 +446,6 @@ export class MailStore implements OnModuleDestroy {
   updateRebate(id: string, input: RebateInput) {
     const previous = this.rebate(id);
     if (!previous) throw new NotFoundException('返利网记录不存在');
-    if (!this.account(input.accountId))
-      throw new NotFoundException('邮箱账号不存在');
     this.writeRebate(id, input, previous.createdAt, new Date().toISOString());
     return this.rebate(id)!;
   }
@@ -419,13 +462,14 @@ export class MailStore implements OnModuleDestroy {
     createdAt: string,
     updatedAt: string,
   ) {
+    const mailbox = this.resolveRebateMailbox(input);
     this.db
       .prepare(
         `INSERT INTO rebate_registrations(
-      id,account_id,site_name,domain,registered_at,offer_name,revenue_cents,cost_cents,
+      id,account_id,standalone_email,site_name,domain,registered_at,offer_name,revenue_cents,cost_cents,
       settled,settlement_cycle,banned,ip,created_at,updated_at
-    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
-      account_id=excluded.account_id,site_name=excluded.site_name,domain=excluded.domain,
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      account_id=excluded.account_id,standalone_email=excluded.standalone_email,site_name=excluded.site_name,domain=excluded.domain,
       registered_at=excluded.registered_at,offer_name=excluded.offer_name,
       revenue_cents=excluded.revenue_cents,cost_cents=excluded.cost_cents,
       settled=excluded.settled,settlement_cycle=excluded.settlement_cycle,
@@ -433,7 +477,8 @@ export class MailStore implements OnModuleDestroy {
       )
       .run(
         id,
-        input.accountId,
+        mailbox.accountId,
+        mailbox.email,
         input.siteName,
         input.domain,
         input.registeredAt,
@@ -447,6 +492,27 @@ export class MailStore implements OnModuleDestroy {
         createdAt,
         updatedAt,
       );
+  }
+  private resolveRebateMailbox(input: RebateInput): { accountId: string | null; email: string } {
+    const id = input.accountId.trim();
+    const email = input.accountEmail?.trim().toLowerCase() || '';
+    if (id) {
+      const account = this.account(id);
+      if (account) {
+        if (email && email !== account.email.trim().toLowerCase())
+          throw new BadRequestException('邮箱地址与所选邮箱不一致，请重新选择');
+        return { accountId: account.id, email: '' };
+      }
+      const standalone = this.db.prepare(`SELECT standalone_email FROM rebate_registrations
+        WHERE account_id IS NULL AND zohome_rebate_email_id(standalone_email)=? LIMIT 1`).get(id);
+      if (!standalone) throw new NotFoundException('邮箱不存在，请选择已有邮箱或直接填写邮箱地址');
+      if (email && email !== standalone.standalone_email)
+        throw new BadRequestException('邮箱地址与所选未知邮箱不一致，请重新填写');
+      return { accountId: null, email: String(standalone.standalone_email) };
+    }
+    if (!email) throw new BadRequestException('请选择邮箱或填写有效的邮箱地址');
+    const existing = this.accounts().find((account) => account.email.trim().toLowerCase() === email);
+    return existing ? { accountId: existing.id, email: '' } : { accountId: null, email };
   }
   messages(accountId: string, folder: Folder): MailDetail[] {
     return this.db

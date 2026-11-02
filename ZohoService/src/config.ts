@@ -22,6 +22,10 @@ export class AppConfig {
     `${this.frontendUrl.replace(/\/$/, '')}/api/auth/zoho/callback`;
   readonly clientId = process.env.ZOHO_CLIENT_ID || '';
   readonly clientSecret = process.env.ZOHO_CLIENT_SECRET || '';
+  readonly outlookRedirectUri = process.env.OUTLOOK_REDIRECT_URI ||
+    `${this.frontendUrl.replace(/\/$/, '')}/api/auth/outlook/callback`;
+  readonly outlookTenant = process.env.OUTLOOK_TENANT || 'common';
+  readonly outlookScopes = 'User.Read Mail.Read Mail.Send offline_access';
   readonly password = process.env.APP_PASSWORD || '';
   readonly encryptionKey = process.env.TOKEN_ENCRYPTION_KEY || '';
   readonly dataDir = resolve(process.env.DATA_DIR || './data');
@@ -47,12 +51,15 @@ export class AppConfig {
       throw new Error('Invalid PORT');
     const frontend = new URL(this.frontendUrl);
     const redirect = new URL(this.redirectUri);
+    const outlookRedirect = new URL(this.outlookRedirectUri);
     if (
       !['http:', 'https:'].includes(frontend.protocol) ||
-      !['http:', 'https:'].includes(redirect.protocol)
+      !['http:', 'https:'].includes(redirect.protocol) ||
+      !['http:', 'https:'].includes(outlookRedirect.protocol) ||
+      outlookRedirect.username || outlookRedirect.password
     ) {
       throw new Error(
-        'FRONTEND_URL and ZOHO_REDIRECT_URI must use http or https',
+        'FRONTEND_URL, ZOHO_REDIRECT_URI and OUTLOOK_REDIRECT_URI must use http or https',
       );
     }
     if (

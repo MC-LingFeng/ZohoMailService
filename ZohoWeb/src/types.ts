@@ -26,6 +26,7 @@ export interface AppSettings {
 }
 export interface Account {
   id: string;
+  provider?: 'zoho' | 'outlook';
   email: string;
   name: string;
   group: string;
@@ -76,6 +77,7 @@ export interface MailList {
 
 export interface RebateInput {
   accountId: string;
+  accountEmail?: string;
   siteName: string;
   domain: string;
   registeredAt: string;
@@ -89,9 +91,18 @@ export interface RebateInput {
 }
 
 export interface RebateOptions {
+  accounts: RebateAccountOption[];
   siteNames: string[];
   domains: string[];
   offerNames: string[];
+}
+
+export interface RebateAccountOption {
+  id: string;
+  email: string;
+  name: string;
+  group: string;
+  unknown: boolean;
 }
 
 export interface RebateCostRefresh {
@@ -112,6 +123,7 @@ export interface RebateRecord extends RebateInput {
   accountEmail: string;
   accountName: string;
   accountGroup: string;
+  accountUnknown: boolean;
   conversionRate: number;
   createdAt: string;
   updatedAt: string;
@@ -121,6 +133,7 @@ export interface RebateComparison {
   accountId: string;
   accountEmail: string;
   accountName: string;
+  accountUnknown: boolean;
   siteName: string;
   domain: string;
   offerName: string;

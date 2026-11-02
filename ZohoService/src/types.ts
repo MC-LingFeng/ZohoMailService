@@ -1,4 +1,10 @@
-export type Folder = 'inbox' | 'spam' | 'sent';
+export type Folder = 'inbox' | 'spam' | 'sent' | 'other';
+export interface MailFolder {
+  id: string;
+  name: string;
+  path: string;
+  type: Folder;
+}
 export type MailProvider = 'zoho' | 'outlook';
 export type AccountStatus = 'connected' | 'reauthorize' | 'error';
 export interface Account {

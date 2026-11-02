@@ -283,6 +283,9 @@ await copyFile(
   join(root, 'docs', 'windows-exe.md'),
   join(outputDir, 'README.md'),
 );
+for (const name of ['google-ads.md', 'outlook.md']) {
+  await copyFile(join(root, 'docs', name), join(outputDir, name));
+}
 console.log(
   `已生成：${relative(root, executable)} (${((await readFile(executable)).length / 1024 / 1024).toFixed(1)} MB)`,
 );

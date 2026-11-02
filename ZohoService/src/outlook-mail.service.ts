@@ -9,7 +9,7 @@ import { MailStore } from './store';
 import { Folder, MailDetail, MailMessage, StoredAccount } from './types';
 
 type Json = Record<string, unknown>;
-const folders: Record<Folder, string> = { inbox: 'inbox', spam: 'junkemail', sent: 'sentitems' };
+const folders: Record<Exclude<Folder, 'other'>, string> = { inbox: 'inbox', spam: 'junkemail', sent: 'sentitems' };
 
 @Injectable()
 export class OutlookMailService {
@@ -101,7 +101,9 @@ export class OutlookMailService {
   }
 
   async page(account: StoredAccount, query: ListMessagesDto) {
+    if (query.folder === 'other') throw new BadRequestException('当前 Outlook 连接暂不支持此文件夹');
     const folder = folders[query.folder];
+    if (query.folderId && query.folderId !== folder) throw new NotFoundException('该 Outlook 邮箱不存在所选文件夹');
     const key = `${account.id}:${query.folder}:${query.limit}`;
     let cursors = this.cursors.get(key);
     if (!cursors) {

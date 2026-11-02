@@ -38,16 +38,19 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 | POST / DELETE | `/session` | 管理登录 `{password}` / 退出 |
 | GET | `/accounts` | 不含令牌的账号列表 |
 | PATCH / DELETE | `/accounts/:id` | 编辑 `{name?,group?}` / 从本系统断开账号 |
-| GET | `/accounts/:id/messages` | `folder=inbox\|spam\|sent&start=1&limit=30` |
+| GET | `/accounts/:id/folders` | 当前账号的文件夹列表，Zoho 包含通知、订阅及自定义文件夹 |
+| GET | `/accounts/:id/messages` | `folder=inbox\|spam\|sent\|other&folderId=...&start=1&limit=30`；`other` 必须指定文件夹 ID |
 | GET | `/accounts/:id/messages/:messageId?folderId=...` | 获取已列出的邮件正文 |
 | POST | `/accounts/:id/send` | 发送 `{to,subject,content}`，当前为单收件人纯文本 |
-| POST | `/accounts/:id/sync` | 刷新该账号收件箱并使列表缓存失效 |
+| POST | `/accounts/:id/sync?folder=...&folderId=...` | 刷新所选文件夹并使该账号缓存失效；省略参数默认收件箱 |
 | POST | `/auth/zoho/url` | 提交 `{email,clientId,clientSecret}`，保存待绑定配置并生成授权地址 |
 | POST | `/accounts/:id/reauthorize` | 使用此邮箱已保存的客户端配置生成重新授权地址 |
 | GET | `/auth/zoho/callback` | 一次性 state 校验、连接邮箱并跳回前端 |
 | GET | `/overview` / `/activity` | 已连接账号、本地已缓存未读、今日发送及近期活动 |
 
 真实模式列表缓存 60 秒，文件夹映射缓存 1 小时；`q` 为当前页文本过滤，演示模式为当前文件夹过滤。正文按需读取，真实模式读取不更改 Zoho 已读标记（只申请 READ/CREATE 权限）。未读数是当前缓存中观察到的收件箱未读数，不代表未抓取的全部邮件。今日发送统计仅包含经本系统发送的邮件，按 Asia/Shanghai 日期计算。附件仅显示存在标识，当前不提供附件上传或下载。
+
+Zoho 文件夹入口按接口返回的真实列表动态展示，包括 Notification、Newsletters 和自定义收信文件夹。系统文件夹优先按路径识别，不把自定义文件夹的 `folderType=Inbox` 当成系统收件箱；文件夹 ID 必须属于当前账号。选择文件夹时按需读取邮件，归档筛选仅用于独立的 Archive 文件夹，避免隐藏普通收件箱和通知邮件；刷新当前标签会重新获取文件夹列表。Outlook 继续提供收件箱、垃圾邮件及已发送入口。
 
 断开操作只删除本地连接和缓存，不删除 Zoho 邮箱或邮件。需要撤销 Zoho 端授权时，到 Zoho Accounts 的 Connected Apps 中移除此应用。
 

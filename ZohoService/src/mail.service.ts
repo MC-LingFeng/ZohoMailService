@@ -15,13 +15,18 @@ import {
 } from './dto';
 import { decryptToken, encryptToken, SessionService } from './security';
 import { MailStore } from './store';
-import { Folder, MailDetail, MailMessage, StoredAccount } from './types';
+import { Folder, MailDetail, MailFolder, MailMessage, StoredAccount } from './types';
 import { ZohoClient } from './zoho';
 import { OutlookMailService } from './outlook-mail.service';
+import { normalizeZohoFolders } from './zoho-folders';
 
 type Json = Record<string, unknown>;
 type Page = { messages: MailMessage[]; hasMore: boolean; cached: boolean };
-const folderNames = { inbox: 'Inbox', spam: 'Spam', sent: 'Sent' };
+const standardFolders: MailFolder[] = [
+  { id: 'inbox', name: '收件箱', path: '/Inbox', type: 'inbox' },
+  { id: 'spam', name: '垃圾邮件', path: '/Spam', type: 'spam' },
+  { id: 'sent', name: '已发送', path: '/Sent', type: 'sent' },
+];
 
 @Injectable()
 export class MailService {
@@ -29,7 +34,7 @@ export class MailService {
   private readonly pendingPages = new Map<string, Promise<Page>>();
   private readonly folders = new Map<
     string,
-    { expires: number; value: Json[] }
+    { expires: number; value: MailFolder[] }
   >();
   constructor(
     private readonly config: AppConfig,
@@ -76,13 +81,16 @@ export class MailService {
   }
   async list(id: string, query: ListMessagesDto): Promise<Page> {
     const account = this.account(id);
-    const key = `${id}:${query.folder}:${query.start}:${query.limit}:${query.q}`;
+    if (query.folder === 'other' && !query.folderId) throw new BadRequestException('请选择具体的邮件文件夹');
+    const key = JSON.stringify([id, query.folder, query.folderId || '', query.start, query.limit, query.q]);
     if (!this.config.live) {
+      if (query.folderId && !(await this.listFolders(id)).some((folder) => folder.id === query.folderId && folder.type === query.folder))
+        throw new NotFoundException('该邮箱不存在所选文件夹');
       const all = this.store
         .messages(id, query.folder)
         .filter(
           (message) =>
-            !query.q ||
+            (!query.folderId || message.folderId === query.folderId) && (!query.q ||
             [
               message.subject,
               message.from,
@@ -90,7 +98,7 @@ export class MailService {
               message.preview,
             ].some((value) =>
               value.toLowerCase().includes(query.q.toLowerCase()),
-            ),
+            )),
         );
       return {
         messages: all
@@ -127,17 +135,20 @@ export class MailService {
       hasMore = page.hasMore;
       providerUnread = page.unread;
     } else {
-      const folder = await this.folder(account, query.folder);
+      const folder = await this.folder(account, query);
       const data = await this.zoho.request(
         account,
         `/api/accounts/${encodeURIComponent(account.zohoAccountId)}/messages/view`,
         {
           query: {
-            folderId: String(folder.folderId),
+            folderId: folder.id,
             start: query.start,
             limit: query.limit,
             includeto: 'true',
             includesent: query.folder === 'sent' ? 'true' : 'false',
+            // On Zoho, opting into archived mail can hide ordinary messages.
+            // Use that filter only for the dedicated Archive folder.
+            ...(folder.path.toLowerCase() === '/archive' ? { includearchive: 'true' } : {}),
             sortBy: 'date',
             sortorder: 'false',
           },
@@ -146,7 +157,7 @@ export class MailService {
       if (!Array.isArray(data))
         throw new BadRequestException('Zoho 返回了无效的邮件列表');
       messages = data.map((row) =>
-        this.mapMessage(row as Json, account, query.folder, String(folder.folderId)),
+        this.mapMessage(row as Json, account, query.folder, folder.id),
       );
       hasMore = data.length === query.limit;
     }
@@ -270,13 +281,13 @@ export class MailService {
     );
     return { messageId, demo: !this.config.live };
   }
-  async sync(id: string) {
+  async sync(id: string, query: ListMessagesDto = new ListMessagesDto()) {
     const account = this.account(id);
     this.invalidate(id);
     if (this.config.live)
       await this.list(
         id,
-        Object.assign(new ListMessagesDto(), { folder: 'inbox' }),
+        Object.assign(new ListMessagesDto(), { folder: query.folder, folderId: query.folderId }),
       );
     else
       this.store.saveAccount({
@@ -464,29 +475,37 @@ export class MailService {
     this.invalidate(result.accountId);
     return { success: true };
   }
-  private async folder(account: StoredAccount, folder: Folder) {
+  async listFolders(id: string): Promise<MailFolder[]> {
+    const account = this.account(id);
+    if (!this.config.live) return standardFolders.map((folder) => ({ ...folder, id: `${id}-${folder.type}` }));
+    if (account.provider === 'outlook') return standardFolders.map((folder) => ({
+      ...folder, id: folder.type === 'spam' ? 'junkemail' : folder.type === 'sent' ? 'sentitems' : 'inbox',
+    }));
     let cached = this.folders.get(account.id);
     if (!cached || cached.expires < Date.now()) {
       const data = await this.zoho.request(
         account,
         `/api/accounts/${encodeURIComponent(account.zohoAccountId)}/folders`,
+        { query: { fields: 'folderId,folderName,folderType,path,isArchived' } },
       );
-      if (!Array.isArray(data))
-        throw new BadRequestException('Zoho 返回了无效的文件夹列表');
-      cached = { expires: Date.now() + 3_600_000, value: data as Json[] };
+      cached = { expires: Date.now() + 3_600_000, value: normalizeZohoFolders(data) };
       this.folders.set(account.id, cached);
     }
-    const name = folderNames[folder];
-    const result =
-      cached.value.find((item) => item.path === `/${name}`) ||
-      cached.value.find((item) => item.folderType === name);
-    if (!result?.folderId)
-      throw new NotFoundException(`该邮箱不存在 ${name} 文件夹`);
+    return cached.value;
+  }
+  private async folder(account: StoredAccount, query: ListMessagesDto) {
+    if (query.folder === 'other' && !query.folderId) throw new BadRequestException('请选择具体的邮件文件夹');
+    const folders = await this.listFolders(account.id);
+    const result = query.folderId
+      ? folders.find((item) => item.id === query.folderId)
+      : folders.find((item) => item.type === query.folder);
+    if (!result || result.type !== query.folder)
+      throw new NotFoundException('该邮箱不存在所选文件夹，请刷新文件夹列表后重试');
     return result;
   }
   private invalidate(id: string) {
     for (const key of this.pages.keys())
-      if (key.startsWith(`${id}:`)) this.pages.delete(key);
+      if ((JSON.parse(key) as string[])[0] === id) this.pages.delete(key);
     this.folders.delete(id);
     this.outlook.invalidate(id);
   }

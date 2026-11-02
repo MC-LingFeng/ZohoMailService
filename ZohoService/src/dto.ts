@@ -10,6 +10,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import type { Folder } from './types';
 
 export class LoginDto {
   @IsString() @MaxLength(256) password!: string;
@@ -35,10 +36,8 @@ export class BindAccountDto {
   clientSecret!: string;
 }
 export class ListMessagesDto {
-  @IsOptional() @IsIn(['inbox', 'spam', 'sent']) folder:
-    | 'inbox'
-    | 'spam'
-    | 'sent' = 'inbox';
+  @IsOptional() @IsIn(['inbox', 'spam', 'sent', 'other']) folder: Folder = 'inbox';
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(256) folderId?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1000000) start = 1;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 30;
   @IsOptional() @IsString() @MaxLength(200) q = '';

@@ -75,6 +75,9 @@ export class AppController {
   ) {
     return this.mail.list(id, query);
   }
+  @Get('accounts/:id/folders') folders(@Param('id') id: string) {
+    return this.mail.listFolders(id);
+  }
   @Get('accounts/:id/messages/:messageId') detail(
     @Param('id') id: string,
     @Param('messageId') messageId: string,
@@ -88,8 +91,11 @@ export class AppController {
   ) {
     return this.mail.send(id, dto);
   }
-  @Post('accounts/:id/sync') sync(@Param('id') id: string) {
-    return this.mail.sync(id);
+  @Post('accounts/:id/sync') sync(
+    @Param('id') id: string,
+    @Query() query: ListMessagesDto,
+  ) {
+    return this.mail.sync(id, query);
   }
   @Post('auth/zoho/url') authorization(
     @Req() req: Request,

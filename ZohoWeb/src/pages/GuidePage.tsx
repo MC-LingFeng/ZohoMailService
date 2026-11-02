@@ -411,7 +411,7 @@ export default function GuidePage() {
             id="read"
             number="03"
             icon={Inbox}
-            title="收件箱和垃圾邮件，一起照看"
+            title="收件箱、通知和其他文件夹，一起照看"
             description="从左侧的分组与邮箱树中找到账号，选中后加载它的邮件。"
           >
             <ol className="space-y-3">
@@ -422,10 +422,10 @@ export default function GuidePage() {
                 账号较多时，用树上方的搜索框模糊搜索分组、账号名称或邮箱地址。命中分组会显示该组全部邮箱，命中账号名称或地址则显示匹配邮箱及其分组。
               </Instruction>
               <Instruction number={3}>
-                选中邮箱后，切换「收件箱」「垃圾邮件」或「已发送」，点击邮件查看正文。
+                选中邮箱后切换文件夹，点击邮件查看正文。Zoho 会显示通知、订阅及自定义文件夹，标签较多时可左右滚动；Outlook 显示收件箱、垃圾邮件和已发送。
               </Instruction>
               <Instruction number={4}>
-                需要查看最新邮件时，刷新当前邮箱；邮件较多时，继续翻页查看。搜索账号和展开分组不会同时加载所有邮箱的邮件。
+                需要查看最新邮件时，刷新当前文件夹；邮件较多时，继续翻页查看。搜索账号和展开分组不会同时加载所有邮箱的邮件。
               </Instruction>
             </ol>
             <div className="flex items-start gap-3 rounded-xl border border-warning-line bg-warning-surface/70 p-4">

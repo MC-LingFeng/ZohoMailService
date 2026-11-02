@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  FolderOpen,
   Inbox,
   Mail,
   Paperclip,
@@ -26,13 +27,14 @@ import {
 import ComposeModal from '../components/ComposeModal';
 import MailAccountTree from '../components/MailAccountTree';
 import { useWorkspace } from '../workspace';
-import type { Folder, MailDetail, MailList, MailMessage } from '../types';
+import type { Folder, MailDetail, MailFolder, MailList, MailMessage } from '../types';
 
-const folders = [
-  { id: 'inbox' as const, label: '收件箱', icon: Inbox },
-  { id: 'spam' as const, label: '垃圾邮件', icon: ShieldAlert },
-  { id: 'sent' as const, label: '已发送', icon: Send },
+const fallbackFolders: MailFolder[] = [
+  { id: 'inbox', name: '收件箱', path: '/Inbox', type: 'inbox' },
+  { id: 'spam', name: '垃圾邮件', path: '/Spam', type: 'spam' },
+  { id: 'sent', name: '已发送', path: '/Sent', type: 'sent' },
 ];
+const folderIcons = { inbox: Inbox, spam: ShieldAlert, sent: Send, other: FolderOpen };
 const LIMIT = 30;
 
 export default function MailPage() {
@@ -44,7 +46,28 @@ export default function MailPage() {
     accounts[0]?.id ||
     '';
   const account = accounts.find((item) => item.id === selectedId);
-  const [folder, setFolder] = useState<Folder>('inbox');
+  const [version, setVersion] = useState(0);
+  const [folderState, setFolderState] = useState<{
+    accountId: string;
+    requestKey: string;
+    items: MailFolder[];
+    loading: boolean;
+    error: string;
+  }>({ accountId: '', requestKey: '', items: [], loading: false, error: '' });
+  const [folderSelection, setFolderSelection] = useState<{ accountId: string; id: string; type?: Folder }>({ accountId: '', id: '' });
+  const [folderRevision, setFolderRevision] = useState(0);
+  const folderLoadKey = `${selectedId}:${version}:${folderRevision}`;
+  const currentFolders = folderState.accountId === selectedId ? folderState : undefined;
+  const folderLoading = Boolean(selectedId && (!currentFolders || currentFolders.loading || currentFolders.requestKey !== folderLoadKey));
+  const folders = currentFolders?.items.length ? currentFolders.items : fallbackFolders;
+  const activeFolder = (folderSelection.accountId === selectedId
+    ? folders.find((item) => item.id === folderSelection.id)
+      || (folderSelection.type !== 'other' ? folders.find((item) => item.type === folderSelection.type) : undefined) : undefined)
+    || folders.find((item) => item.type === 'inbox') || folders[0];
+  const folder: Folder = activeFolder.type;
+  // Before the server folder list is available, use the compatible default routes without an ID.
+  const folderId = currentFolders?.items.length ? activeFolder.id : '';
+  const folderScope = `${selectedId}:${folder}:${folderId}`;
   const [search, setSearch] = useState('');
   const [messages, setMessages] = useState<MailMessage[]>([]);
   const [selected, setSelected] = useState<MailMessage | null>(null);
@@ -54,13 +77,16 @@ export default function MailPage() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
   const [detailError, setDetailError] = useState('');
-  const [start, setStart] = useState(1);
+  const [pagination, setPagination] = useState({ scope: '', start: 1 });
+  const start = pagination.scope === folderScope ? pagination.start : 1;
+  const setStart = (value: number) => setPagination({ scope: folderScope, start: value });
   const [hasMore, setHasMore] = useState(false);
   const [cached, setCached] = useState(false);
-  const [version, setVersion] = useState(0);
   const [compose, setCompose] = useState(false);
   const listRequest = useRef(0);
   const detailRequest = useRef(0);
+  const currentScope = useRef(folderScope);
+  currentScope.current = folderScope;
   useEffect(() => {
     if (params.get('compose')) {
       setCompose(true);
@@ -70,12 +96,44 @@ export default function MailPage() {
     }
   }, [params, setParams]);
   useEffect(() => {
-    setStart(1);
     setSelected(null);
     setDetail(null);
+    setDetailError('');
+    setError('');
     setSearch('');
     detailRequest.current++;
-  }, [selectedId, folder]);
+  }, [folderScope]);
+  useEffect(() => {
+    if (!selectedId || !account) return;
+    const controller = new AbortController();
+    setFolderState((current) => ({
+      accountId: selectedId,
+      requestKey: folderLoadKey,
+      items: current.accountId === selectedId ? current.items : [],
+      loading: true,
+      error: '',
+    }));
+    void api<MailFolder[]>(`/accounts/${encodeURIComponent(selectedId)}/folders`, { signal: controller.signal })
+      .then((items) => {
+        if (controller.signal.aborted) return;
+        if (!Array.isArray(items) || !items.length || items.some((item) =>
+          !item || typeof item.id !== 'string' || !item.id || typeof item.name !== 'string' ||
+          typeof item.path !== 'string' || !['inbox', 'spam', 'sent', 'other'].includes(item.type)))
+          throw new Error('邮箱返回的文件夹列表无效');
+        setFolderState({ accountId: selectedId, requestKey: folderLoadKey, items: [...new Map(items.map((item) => [item.id, item])).values()], loading: false, error: '' });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setFolderState((current) => ({
+          accountId: selectedId,
+          requestKey: folderLoadKey,
+          items: current.accountId === selectedId ? current.items : [],
+          loading: false,
+          error: error instanceof Error ? error.message : '文件夹加载失败',
+        }));
+      });
+    return () => controller.abort();
+  }, [selectedId, !!account, folderLoadKey]);
   useEffect(() => {
     const request = ++listRequest.current;
     if (!selectedId || !account) {
@@ -83,35 +141,42 @@ export default function MailPage() {
       setLoading(false);
       return;
     }
-    let active = true;
+    if (folderLoading) {
+      setLoading(true);
+      return;
+    }
+    const controller = new AbortController();
     setLoading(true);
     setError('');
     setSelected(null);
     setDetail(null);
     detailRequest.current++;
     api<MailList>(
-      `/accounts/${encodeURIComponent(selectedId)}/messages?folder=${folder}&start=${start}&limit=${LIMIT}`,
+      `/accounts/${encodeURIComponent(selectedId)}/messages?${new URLSearchParams({ folder,
+        ...(folderId ? { folderId } : {}), start: String(start), limit: String(LIMIT) })}`,
+      { signal: controller.signal },
     )
       .then((result) => {
-        if (active && request === listRequest.current) {
+        if (!controller.signal.aborted && request === listRequest.current) {
           setMessages(result.messages);
           setHasMore(result.hasMore);
           setCached(result.cached);
         }
       })
       .catch((error: unknown) => {
-        if (active && request === listRequest.current) {
+        if (!controller.signal.aborted && request === listRequest.current) {
           setMessages([]);
+          setHasMore(false);
           setError(error instanceof Error ? error.message : '邮件加载失败');
         }
       })
       .finally(() => {
-        if (active && request === listRequest.current) setLoading(false);
+        if (!controller.signal.aborted && request === listRequest.current) setLoading(false);
       });
     return () => {
-      active = false;
+      controller.abort();
     };
-  }, [selectedId, !!account, folder, start, version]);
+  }, [selectedId, !!account, folder, folderId, folderLoading, start, version]);
   const visible = useMemo(
     () =>
       messages.filter((message) =>
@@ -148,17 +213,19 @@ export default function MailPage() {
     }
   };
   const sync = async () => {
-    if (!selectedId || syncing) return;
+    if (!selectedId || syncing || folderLoading) return;
+    const scope = folderScope;
     setSyncing(true);
     setError('');
     try {
-      await api(`/accounts/${encodeURIComponent(selectedId)}/sync`, {
+      await api(`/accounts/${encodeURIComponent(selectedId)}/sync?${new URLSearchParams({ folder, ...(folderId ? { folderId } : {}) })}`, {
         method: 'POST',
       });
+      if (currentScope.current !== scope) return;
       setStart(1);
       setVersion((value) => value + 1);
       await refresh();
-      toast('已刷新当前邮箱，正在获取邮件列表。');
+      toast(`已刷新${activeFolder.name}，正在获取邮件列表。`);
     } catch (error) {
       setError(error instanceof Error ? error.message : '刷新失败');
     } finally {
@@ -169,7 +236,7 @@ export default function MailPage() {
     if (syncing || id === selectedId) return;
     listRequest.current++;
     detailRequest.current++;
-    setStart(1);
+    setFolderSelection({ accountId: id, id: '', type: 'inbox' });
     setMessages([]);
     setSelected(null);
     setDetail(null);
@@ -271,7 +338,7 @@ export default function MailPage() {
                   <button
                     className="btn-secondary py-2"
                     onClick={() => void sync()}
-                    disabled={syncing || loading || !account}
+                    disabled={syncing || loading || folderLoading || !account}
                   >
                     <RefreshCw
                       size={13}
@@ -282,27 +349,45 @@ export default function MailPage() {
                 </div>
               </div>
               <section className="panel overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b px-2 pr-4">
-                  <div className="flex">
-                    {folders.map(({ id, label, icon: Icon }) => (
-                      <button
-                        key={id}
-                        className={`tab ${folder === id ? 'tab-active' : ''}`}
-                        onClick={() => {
-                          setStart(1);
-                          setFolder(id);
-                        }}
-                      >
-                        <Icon size={14} />
-                        {label}
-                      </button>
-                    ))}
+                <div className="border-b px-2">
+                  <div className="flex overflow-x-auto" role="tablist" aria-label="邮箱文件夹">
+                    {folders.map((item) => {
+                      const Icon = folderIcons[item.type];
+                      return (
+                        <button
+                          key={item.id}
+                          role="tab"
+                          aria-selected={activeFolder.id === item.id}
+                          title={item.path || item.name}
+                          className={`tab shrink-0 whitespace-nowrap ${activeFolder.id === item.id ? 'tab-active' : ''}`}
+                          disabled={folderLoading || syncing}
+                          onClick={() => {
+                            if (activeFolder.id === item.id) return;
+                            listRequest.current++;
+                            detailRequest.current++;
+                            setFolderSelection({ accountId: selectedId, id: item.id, type: item.type });
+                          }}
+                        >
+                          <Icon size={14} />
+                          {item.name}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <span className="hidden text-[10px] text-subtle sm:inline">
-                    {cached ? '缓存内容' : '最近获取'} ·{' '}
-                    {dateLabel(account?.lastSyncedAt || null, true)}
-                  </span>
+                  <p className="px-2 pb-2 text-[10px] text-subtle" role={folderLoading ? 'status' : undefined}>
+                    {folderLoading ? '正在读取邮箱文件夹…' : `${folders.length} 个文件夹 · 可左右滚动切换`}
+                    <span className="ml-3 hidden sm:inline">{cached ? '缓存内容' : '最近获取'} · {dateLabel(account?.lastSyncedAt || null, true)}</span>
+                  </p>
                 </div>
+                {currentFolders?.error && (
+                  <div className="space-y-2 border-b border-line-soft p-4">
+                    <ErrorNotice message={`文件夹列表加载失败：${currentFolders.error}`} />
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted">
+                      <p>{currentFolders.items.length ? '暂时显示上次读取的文件夹列表。' : '暂时保留收件箱、垃圾邮件和已发送；通知等其他文件夹需重试加载。'}</p>
+                      <button className="btn-secondary py-1.5" disabled={folderLoading || syncing} onClick={() => setFolderRevision((value) => value + 1)}>重试加载文件夹</button>
+                    </div>
+                  </div>
+                )}
                 {error && (
                   <div className="p-4">
                     <ErrorNotice message={error} />
@@ -452,11 +537,7 @@ export default function MailPage() {
                             返回列表
                           </button>
                           <span className="badge-muted">
-                            {folder === 'spam'
-                              ? '垃圾邮件'
-                              : folder === 'sent'
-                                ? '已发送'
-                                : '收件箱'}
+                            {activeFolder.name}
                           </span>
                         </div>
                         {detailLoading ? (

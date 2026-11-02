@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, chmodSync, openSync, closeSync, fsyncSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
@@ -26,6 +26,32 @@ export function desktopHome(
     env.XDG_DATA_HOME || join(homedir(), '.local', 'share'),
     'ZoHome',
   );
+}
+
+function appendOptionalConfiguration(configPath: string, source: string, saved: Record<string, string>) {
+  const optional: Record<string, string> = {
+    ADS_MANAGER_ACCOUNT: '',
+    ADS_CREDENTIALS_FILE: './credentials.json',
+    ADS_API_VERSION: 'v26',
+    OUTLOOK_TENANT: 'common',
+  };
+  const missing = Object.entries(optional).filter(([key]) => !Object.hasOwn(saved, key));
+  if (!missing.length) return;
+  const newline = source.match(/\r\n|\n|\r/)?.[0] || '\n';
+  const suffix = [
+    source.endsWith('\n') || source.endsWith('\r') ? '' : newline,
+    '# 新增可选配置：Google Ads 与 Outlook', newline,
+    ...missing.flatMap(([key, value]) => [`${key}=${value}`, newline]),
+  ].join('');
+  // Append without rewriting existing values, comments, or line endings.
+  // Recheck the source to avoid replacing edits made while startup validated it.
+  const fd = openSync(configPath, 'a+');
+  try {
+    if (readFileSync(fd, 'utf8') !== source)
+      throw new Error('桌面配置文件已被修改，请重新启动 ZoHome');
+    writeFileSync(fd, suffix, 'utf8');
+    fsyncSync(fd);
+  } finally { closeSync(fd); }
 }
 
 export function loadDesktopConfiguration(
@@ -80,8 +106,8 @@ export function loadDesktopConfiguration(
     )
       throw error;
   }
-  if (process.platform !== 'win32') chmodSync(configPath, 0o600);
-  const saved = parse(readFileSync(configPath));
+  const source = readFileSync(configPath, 'utf8');
+  const saved = parse(source);
   if (
     !saved.APP_PASSWORD ||
     saved.APP_PASSWORD.length < 12 ||
@@ -136,6 +162,9 @@ export function loadDesktopConfiguration(
   if (outlookCallback.origin !== frontend.origin || outlookCallback.pathname !== '/api/auth/outlook/callback' ||
       outlookCallback.search || outlookCallback.hash || outlookCallback.username || outlookCallback.password)
     throw new Error(`桌面版 OUTLOOK_REDIRECT_URI 必须为 ${frontend.origin}/api/auth/outlook/callback，请检查 ${configPath}`);
+  // Upgrade only after the old configuration passes validation; never reset an existing key.
+  if (process.platform !== 'win32') chmodSync(configPath, 0o600);
+  appendOptionalConfiguration(configPath, source, saved);
   return {
     home,
     configPath,

@@ -69,6 +69,29 @@ export interface RebateOptions {
   offerNames: string[];
 }
 
+export interface RebateCostTarget {
+  id: string;
+  accountId: string;
+  offerName: string;
+  costCents: number;
+  updatedAt: string;
+}
+
+export interface RebateCostIssue {
+  offerName: string;
+  reason: string;
+  message: string;
+}
+
+export interface RebateCostRefresh {
+  currency: 'USD';
+  refreshedAt: string;
+  totalOffers: number;
+  updatedOffers: number;
+  updatedRecords: number;
+  issues: RebateCostIssue[];
+}
+
 export function rebateRate(cost: number, revenue: number) {
   return revenue > 0 ? Math.round((cost / revenue) * 10000) / 100 : 0;
 }

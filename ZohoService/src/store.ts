@@ -20,6 +20,8 @@ import {
 } from './types';
 import {
   RebateComparison,
+  RebateCostIssue,
+  RebateCostTarget,
   RebateInput,
   RebateList,
   RebateOptions,
@@ -215,6 +217,70 @@ export class MailStore implements OnModuleDestroy {
       domains: options('domain'),
       offerNames: options('offer_name'),
     };
+  }
+  rebateCostTargets(): RebateCostTarget[] {
+    return this.db
+      .prepare('SELECT id,account_id,offer_name,cost_cents,updated_at FROM rebate_registrations')
+      .all()
+      .map((row) => ({
+        id: String(row.id),
+        accountId: String(row.account_id),
+        offerName: String(row.offer_name),
+        costCents: Number(row.cost_cents),
+        updatedAt: String(row.updated_at),
+      }));
+  }
+  saveRebateCosts(
+    updates: { target: RebateCostTarget; costCents: number }[],
+    refreshedAt: string,
+  ) {
+    const issues: RebateCostIssue[] = [];
+    let updatedRecords = 0;
+    let updatedOffers = 0;
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      // Recheck after the network calls: another tab may have edited or added an Offer.
+      const current = this.rebateCostTargets();
+      const currentOffers = new Map<string, RebateCostTarget[]>();
+      for (const row of current) {
+        const name = row.offerName.trim();
+        currentOffers.set(name, [...(currentOffers.get(name) || []), row]);
+      }
+      const offers = new Map<string, typeof updates>();
+      for (const update of updates) {
+        const name = update.target.offerName.trim();
+        offers.set(name, [...(offers.get(name) || []), update]);
+      }
+      const write = this.db.prepare(`UPDATE rebate_registrations
+        SET cost_cents=?,updated_at=?
+        WHERE id=? AND offer_name=? AND cost_cents=? AND updated_at=?`);
+      for (const [offerName, group] of offers) {
+        const latest = currentOffers.get(offerName) || [];
+        const unchanged = latest.length === group.length && group.every(({ target }) =>
+          latest.some((row) => row.id === target.id && row.accountId === target.accountId &&
+            row.offerName === target.offerName && row.updatedAt === target.updatedAt && row.costCents === target.costCents));
+        if (!unchanged) {
+          issues.push({
+            offerName,
+            reason: 'record_changed',
+            message: '刷新期间关联记录已修改、添加或删除，此 Offer 已保留原成本，请重试',
+          });
+          continue;
+        }
+        for (const { target, costCents } of group) {
+          if (!Number.isSafeInteger(costCents) || costCents < 0 || costCents > 100_000_000_000_000)
+            throw new BadRequestException('广告消费金额超出可保存范围');
+          write.run(costCents, refreshedAt, target.id, target.offerName, target.costCents, target.updatedAt);
+          updatedRecords++;
+        }
+        updatedOffers++;
+      }
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+    return { updatedRecords, updatedOffers, issues };
   }
   rebates(query: RebateQuery): RebateList {
     const conditions: string[] = [];

@@ -118,7 +118,7 @@ export default function RebateOverview({ data, loading }: {
             item.accountEmail,
             `收益  ${amount(item.totalRevenue)}`,
             `已结款  ${amount(item.settledRevenue)}    未结款  ${amount(item.unsettledRevenue)}`,
-            `成本  ${amount(item.totalCost)}`,
+            `成本（USD）  ${amount(item.totalCost)}`,
             `转化（成本:收益）  ${formatConversion(item.totalCost, item.totalRevenue)}`,
             ratio === '—' ? '转化倍数  —（成本为 0）' : `转化倍数  ≈ 1:${ratio}`,
             `${item.recordCount} 条记录`,
@@ -189,7 +189,7 @@ export default function RebateOverview({ data, loading }: {
 
   const cards = [
     { title: '总收益', value: totals ? amount(totals.totalRevenue) : '—', Icon: CircleDollarSign, color: 'text-accent', caption: totals ? `已结款 ${amount(totals.settledRevenue)} · 未结款 ${amount(totals.unsettledRevenue)}` : '已结款与未结款收益' },
-    { title: '总成本', value: totals ? amount(totals.totalCost) : '—', Icon: Wallet, color: 'text-warning-ink', caption: '包含已封户记录的成本' },
+    { title: '总成本（USD）', value: totals ? amount(totals.totalCost) : '—', Icon: Wallet, color: 'text-warning-ink', caption: '包含已封户记录的成本' },
     { title: '整体转化', value: totals ? formatConversion(totals.totalCost, totals.totalRevenue) : '—', Icon: ArrowDownUp, color: 'text-info-ink', caption: totals ? `成本:收益 · ${totals.totalCost > 0 ? `≈ 1:${formatConversionApprox(totals.totalCost, totals.totalRevenue)}` : '成本为 0，倍数为 —'}` : '按汇总成本与收益计算' },
   ];
 
@@ -238,7 +238,7 @@ export default function RebateOverview({ data, loading }: {
                 <table className="w-full min-w-[920px] text-left text-[11px]">
                   <caption className="sr-only">全部筛选结果按邮箱、返利网、域名及 Offer 汇总，顺序与图表一致</caption>
                   <thead className="bg-surface-muted text-muted">
-                    <tr>{['Offer / 返利网', '邮箱', '总收益', '已结款 / 未结款', '成本', '转化（成本:收益）', '记录数'].map((label) => <th className="px-3 py-3 font-medium" key={label}>{label}</th>)}</tr>
+                    <tr>{['Offer / 返利网', '邮箱', '总收益', '已结款 / 未结款', '成本（USD）', '转化（成本:收益）', '记录数'].map((label) => <th className="px-3 py-3 font-medium" key={label}>{label}</th>)}</tr>
                   </thead>
                   <tbody>
                     {items.map((item) => (

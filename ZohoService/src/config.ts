@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { environmentOverrideKeys, runtimeEnvironmentFile } from './runtime-env';
 
 @Injectable()
@@ -25,6 +25,12 @@ export class AppConfig {
   readonly password = process.env.APP_PASSWORD || '';
   readonly encryptionKey = process.env.TOKEN_ENCRYPTION_KEY || '';
   readonly dataDir = resolve(process.env.DATA_DIR || './data');
+  readonly adsManagerAccount = process.env.ADS_MANAGER_ACCOUNT || '';
+  readonly adsCredentialsFile = resolve(
+    dirname(this.envFile),
+    process.env.ADS_CREDENTIALS_FILE || 'credentials.json',
+  );
+  readonly adsApiVersion = process.env.ADS_API_VERSION || 'v26';
   readonly minInterval = Math.max(
     2100,
     Number(process.env.ZOHO_MIN_REQUEST_INTERVAL_MS || 2100) || 2100,

@@ -9,6 +9,8 @@ import { ZohoClient } from './zoho';
 import { RebatesController } from './rebates.controller';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
+import { GoogleAdsClient } from './google-ads';
+import { RebateCostsService } from './rebate-costs.service';
 
 @Module({
   controllers: [AppController, RebatesController, SettingsController],
@@ -19,6 +21,8 @@ import { SettingsService } from './settings.service';
     ZohoClient,
     MailService,
     SettingsService,
+    GoogleAdsClient,
+    RebateCostsService,
     { provide: APP_GUARD, useClass: AccessGuard },
   ],
 })

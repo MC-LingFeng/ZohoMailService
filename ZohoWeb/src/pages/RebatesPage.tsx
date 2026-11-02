@@ -29,6 +29,7 @@ import {
 } from '../components/ui';
 import type {
   Account,
+  RebateCostRefresh,
   RebateInput,
   RebateList,
   RebateOptions,
@@ -318,6 +319,10 @@ export default function RebatesPage() {
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<RebateRecord | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const [refreshingCosts, setRefreshingCosts] = useState(false);
+  const costsRefreshLock = useRef(false);
+  const [costRefreshResult, setCostRefreshResult] = useState<RebateCostRefresh | null>(null);
+  const [costRefreshError, setCostRefreshError] = useState('');
   const query = new URLSearchParams({
     search: filters.search.trim(),
     accountId: filters.accountId,
@@ -386,6 +391,7 @@ export default function RebatesPage() {
     setFilters((current) => ({ ...current, [key]: value, page: 1 }));
   };
   const openEditor = (record?: RebateRecord) => {
+    if (costsRefreshLock.current) return;
     setEditing(record || null);
     setFormError('');
     setOptions(null);
@@ -420,7 +426,7 @@ export default function RebatesPage() {
   };
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    if (busy) return;
+    if (busy || costsRefreshLock.current) return;
     setBusy(true);
     setFormError('');
     const payload: RebateInput = {
@@ -442,6 +448,7 @@ export default function RebatesPage() {
         },
       );
       setEditorOpen(false);
+      setCostRefreshResult(null);
       toast(editing ? '返利网记录已更新。' : '返利网记录已添加。');
       setRevision((value) => value + 1);
     } catch (error) {
@@ -451,7 +458,7 @@ export default function RebatesPage() {
     }
   };
   const remove = async () => {
-    if (!deleting || busy) return;
+    if (!deleting || busy || costsRefreshLock.current) return;
     setBusy(true);
     setDeleteError('');
     try {
@@ -459,6 +466,7 @@ export default function RebatesPage() {
         method: 'DELETE',
       });
       setDeleting(null);
+      setCostRefreshResult(null);
       toast('返利网记录已删除。');
       setRevision((value) => value + 1);
     } catch (error) {
@@ -467,6 +475,27 @@ export default function RebatesPage() {
       );
     } finally {
       setBusy(false);
+    }
+  };
+  const refreshCosts = async () => {
+    if (costsRefreshLock.current || busy || editorOpen || deleting) return;
+    costsRefreshLock.current = true;
+    setRefreshingCosts(true);
+    setCostRefreshResult(null);
+    setCostRefreshError('');
+    try {
+      const result = await api<RebateCostRefresh>('/rebates/refresh-costs', {
+        method: 'POST',
+      });
+      setCostRefreshResult(result);
+      setRevision((value) => value + 1);
+    } catch (error) {
+      setCostRefreshError(
+        error instanceof Error ? error.message : '成本刷新失败，请重试',
+      );
+    } finally {
+      costsRefreshLock.current = false;
+      setRefreshingCosts(false);
     }
   };
   const hasFilters = Boolean(
@@ -484,16 +513,68 @@ export default function RebatesPage() {
         title="返利网"
         description="按邮箱管理返利网与 Offer，逐项对比收益、成本和转化。"
         action={
-          <button
-            className="btn-primary"
-            onClick={() => openEditor()}
-            disabled={accountsLoading || accounts.length === 0}
-          >
-            <Plus size={15} />
-            新增记录
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="btn-secondary"
+              onClick={() => void refreshCosts()}
+              disabled={refreshingCosts || busy || editorOpen || Boolean(deleting)}
+              aria-describedby="cost-refresh-description"
+              title="按广告系列名称匹配所有 Offer，同名消费汇总后按邮箱平均分配，并将美元成本保存"
+            >
+              <RefreshCw size={15} className={refreshingCosts ? 'animate-spin' : undefined} />
+              {refreshingCosts ? '正在刷新…' : '刷新预算'}
+            </button>
+            <button
+              className="btn-primary"
+              onClick={() => openEditor()}
+              disabled={accountsLoading || accounts.length === 0 || refreshingCosts}
+            >
+              <Plus size={15} />
+              新增记录
+            </button>
+          </div>
         }
       />
+
+      <p id="cost-refresh-description" className="mb-4 text-[11px] leading-6 text-muted">
+        刷新预算会按广告系列名称匹配全部 Offer，汇总同名广告系列的累计实际消费（美元 USD），按关联邮箱平均分配后覆盖并保存成本；同一邮箱有多条同名 Offer 记录时再均分，不受当前筛选或分页影响。
+      </p>
+      {refreshingCosts && (
+        <p className="mb-4 text-xs text-muted" role="status">
+          正在读取 Google Ads 消费并保存成本，请稍候…
+        </p>
+      )}
+      {costRefreshError && (
+        <div className="mb-4">
+          <ErrorNotice message={`成本刷新失败：${costRefreshError}`} />
+        </div>
+      )}
+      {costRefreshResult && (
+        <div className="panel mb-5 p-4 text-xs leading-6 text-body" role="status">
+          <p>
+            {costRefreshResult.issues.length ? '成本刷新已完成，部分 Offer 未更新。' : '成本刷新已完成。'}
+            {' '}已更新 {costRefreshResult.updatedOffers} / {costRefreshResult.totalOffers} 个 Offer、
+            {costRefreshResult.updatedRecords} 条记录，单位为美元（USD）。
+          </p>
+          <p className="text-[11px] text-muted">
+            刷新时间：{new Date(costRefreshResult.refreshedAt).toLocaleString('zh-CN', { hour12: false })}
+          </p>
+          {costRefreshResult.issues.length > 0 && (
+            <details className="mt-2" open>
+              <summary className="cursor-pointer text-warning-ink">
+                {costRefreshResult.issues.length} 项未更新，原成本已保留
+              </summary>
+              <ul className="mt-2 max-h-60 list-disc space-y-1 overflow-y-auto pl-5">
+                {costRefreshResult.issues.map((issue, index) => (
+                  <li key={`${issue.offerName}-${index}`} className="break-words">
+                    <b className="font-medium">{issue.offerName || '未填写 Offer 名称'}</b>：{issue.message}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted">
         <p>
@@ -507,7 +588,7 @@ export default function RebatesPage() {
           </b>{' '}
           个邮箱
         </p>
-        <p>图表统计全部筛选结果，金额请使用同一币种。</p>
+        <p>图表统计全部筛选结果；成本单位为 USD，收益请使用美元。</p>
       </div>
       {loadError ? (
         <div className="panel mb-6 p-5">
@@ -651,7 +732,7 @@ export default function RebatesPage() {
                   清除筛选
                 </button>
               ) : (
-                <button className="btn-primary" onClick={() => openEditor()}>
+                <button className="btn-primary" onClick={() => openEditor()} disabled={refreshingCosts}>
                   <Plus size={14} />
                   新增记录
                 </button>
@@ -681,7 +762,7 @@ export default function RebatesPage() {
                       '创建时间',
                       'Offer 名称',
                       '总收益',
-                      '总成本',
+                      '总成本（USD）',
                       '转化',
                       '是否结款',
                       '结款周期',
@@ -780,17 +861,20 @@ export default function RebatesPage() {
                             onClick={() => openEditor(record)}
                             aria-label={`编辑 ${record.accountEmail} 的 ${record.siteName}`}
                             title="编辑记录"
+                            disabled={refreshingCosts}
                           >
                             <Pencil size={14} />
                           </button>
                           <button
                             className="icon-button hover:text-danger-ink"
                             onClick={() => {
+                              if (costsRefreshLock.current) return;
                               setDeleteError('');
                               setDeleting(record);
                             }}
                             aria-label={`删除 ${record.accountEmail} 的 ${record.siteName}`}
                             title="删除记录"
+                            disabled={refreshingCosts}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -942,7 +1026,7 @@ export default function RebatesPage() {
                 />
               </label>
               <label>
-                <span className="field-label">返利网总成本</span>
+                <span className="field-label">返利网总成本（USD）</span>
                 <input
                   className="input tabular-nums"
                   type="number"
@@ -1022,7 +1106,7 @@ export default function RebatesPage() {
                 )}
               </p>
               <p className="mt-1 text-[10px] text-subtle">
-                按成本:收益自动约分，例如 20:400 显示 1:20。金额请使用同一币种。
+                按成本:收益自动约分，例如 20:400 显示 1:20。成本单位为 USD，收益请使用美元。
               </p>
             </div>
             {formError && <ErrorNotice message={formError} />}

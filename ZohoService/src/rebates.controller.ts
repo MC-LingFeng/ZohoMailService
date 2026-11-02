@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -10,10 +11,14 @@ import {
 } from '@nestjs/common';
 import { ListRebatesDto, RebateDto } from './rebates.dto';
 import { MailStore } from './store';
+import { RebateCostsService } from './rebate-costs.service';
 
 @Controller('rebates')
 export class RebatesController {
-  constructor(private readonly store: MailStore) {}
+  constructor(
+    private readonly store: MailStore,
+    private readonly costs: RebateCostsService,
+  ) {}
 
   @Get()
   list(@Query() query: ListRebatesDto) {
@@ -28,6 +33,12 @@ export class RebatesController {
   @Post()
   create(@Body() dto: RebateDto) {
     return this.store.createRebate(dto);
+  }
+
+  @Post('refresh-costs')
+  @HttpCode(200)
+  refreshCosts() {
+    return this.costs.refresh();
   }
 
   @Patch(':id')

@@ -1,0 +1,10 @@
+# Optional Google Ads credentials mount. Use together with compose.yaml.
+services:
+  zohome:
+    volumes:
+      - type: bind
+        source: ${ZOHOME_ADS_CREDENTIALS_FILE:-./ZohoService/credentials.json}
+        target: /app/config/credentials.json
+        read_only: true
+        bind:
+          create_host_path: false

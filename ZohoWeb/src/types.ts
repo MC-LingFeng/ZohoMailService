@@ -94,6 +94,19 @@ export interface RebateOptions {
   offerNames: string[];
 }
 
+export interface RebateCostRefresh {
+  currency: 'USD';
+  refreshedAt: string;
+  totalOffers: number;
+  updatedOffers: number;
+  updatedRecords: number;
+  issues: Array<{
+    offerName: string;
+    reason: string;
+    message: string;
+  }>;
+}
+
 export interface RebateRecord extends RebateInput {
   id: string;
   accountEmail: string;

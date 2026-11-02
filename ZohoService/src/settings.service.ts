@@ -35,6 +35,8 @@ const keyTitles: Record<string, string> = {
   ZOHO_CLIENT_ID: '应用编号', ZOHO_CLIENT_SECRET: '应用密钥',
   APP_PASSWORD: '工作区密码', TOKEN_ENCRYPTION_KEY: '令牌加密密钥',
   DATA_DIR: '数据目录', ZOHO_MIN_REQUEST_INTERVAL_MS: '请求间隔（毫秒）',
+  ADS_MANAGER_ACCOUNT: 'Google Ads 经理号',
+  ADS_CREDENTIALS_FILE: 'Google Ads 服务账号密钥文件', ADS_API_VERSION: 'Google Ads API 版本',
 };
 const valuesOf = (source: string) => new Map(parseEnvDocument(source).map((entry) => [entry.key, entry.value]));
 const valuesRevision = (source: string) => digest(JSON.stringify([...valuesOf(source)].sort(([a], [b]) => a.localeCompare(b))));

@@ -55,6 +55,12 @@ export function loadDesktopConfiguration(
         '# 接口请求间隔（毫秒，至少 2100）',
         'ZOHO_MIN_REQUEST_INTERVAL_MS=2100',
         '',
+        '# Google Ads（可选，手动刷新 Offer 的美元累计成本）',
+        'ADS_MANAGER_ACCOUNT=',
+        '# 相对路径以此配置文件所在目录为准',
+        'ADS_CREDENTIALS_FILE=./credentials.json',
+        'ADS_API_VERSION=v26',
+        '',
         '# 网页地址（可选，默认本机服务端口）',
         '# FRONTEND_URL=http://localhost:3001',
         '# 授权回调地址（可选）',
@@ -136,6 +142,9 @@ export function loadDesktopConfiguration(
       TOKEN_ENCRYPTION_KEY: saved.TOKEN_ENCRYPTION_KEY,
       ZOHO_MIN_REQUEST_INTERVAL_MS:
         saved.ZOHO_MIN_REQUEST_INTERVAL_MS || '2100',
+      ADS_MANAGER_ACCOUNT: saved.ADS_MANAGER_ACCOUNT || '',
+      ADS_CREDENTIALS_FILE: resolve(home, saved.ADS_CREDENTIALS_FILE || 'credentials.json'),
+      ADS_API_VERSION: saved.ADS_API_VERSION || 'v26',
       // Desktop mailbox credentials live in the database, never inherited from a developer's environment.
       ZOHO_CLIENT_ID: '',
       ZOHO_CLIENT_SECRET: '',

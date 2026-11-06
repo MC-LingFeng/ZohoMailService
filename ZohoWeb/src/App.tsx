@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronRight,
   CircleHelp,
+  Fingerprint,
   Home,
   Inbox,
   LockKeyhole,
@@ -27,6 +28,7 @@ import AccountsPage from './pages/AccountsPage';
 import GuidePage from './pages/GuidePage';
 import RebatesPage from './pages/RebatesPage';
 import SettingsPage from './pages/SettingsPage';
+import FingerprintBrowsersPage from './pages/FingerprintBrowsersPage';
 import { useWorkspace, WorkspaceProvider } from './workspace';
 import type { AppStatus } from './types';
 
@@ -58,6 +60,7 @@ function Shell() {
     { to: '/mail', label: '邮件工作台', icon: Inbox },
     { to: '/accounts', label: '邮箱账号', icon: Users },
     { to: '/rebates', label: '返利网', icon: ChartNoAxesCombined },
+    { to: '/fingerprint-browsers', label: '指纹浏览器', icon: Fingerprint },
     { to: '/settings', label: '系统设置', icon: Settings },
     { to: '/guide', label: '使用指南', icon: BookOpen },
   ];
@@ -216,6 +219,7 @@ function Shell() {
           <Route path="/mail" element={<MailPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/rebates" element={<RebatesPage />} />
+          <Route path="/fingerprint-browsers" element={<FingerprintBrowsersPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/guide" element={<GuidePage />} />
           <Route

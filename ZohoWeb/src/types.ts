@@ -83,6 +83,7 @@ export interface MailList {
 
 export interface RebateInput {
   accountId: string;
+  fingerprintBrowserId?: string;
   accountEmail?: string;
   siteName: string;
   domain: string;
@@ -126,6 +127,9 @@ export interface RebateCostRefresh {
 
 export interface RebateRecord extends RebateInput {
   id: string;
+  fingerprintBrowserId: string;
+  fingerprintBrowserExternalId: string;
+  fingerprintBrowserSerialNumber: string;
   accountEmail: string;
   accountName: string;
   accountGroup: string;
@@ -166,4 +170,57 @@ export interface RebateList {
     accountCount: number;
   };
   comparison: RebateComparison[];
+}
+
+export interface FingerprintBrowserInput {
+  serialNumber: string;
+  browserId: string;
+  windowName: string;
+  proxyInfo: string;
+  accountIds: string[];
+}
+
+export interface FingerprintBrowserAccount extends RebateAccountOption {
+  rebates: Array<{ id: string; offerName: string; siteName: string; domain: string }>;
+}
+
+export interface FingerprintBrowserRecord extends FingerprintBrowserInput {
+  id: string;
+  accounts: FingerprintBrowserAccount[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FingerprintBrowserOption {
+  id: string;
+  browserId: string;
+  serialNumber: string;
+  windowName: string;
+}
+
+export interface FingerprintBrowserOptions {
+  browsers: FingerprintBrowserOption[];
+  accounts: FingerprintBrowserAccount[];
+}
+
+export interface FingerprintBrowserList {
+  records: FingerprintBrowserRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface FingerprintBrowserImportRow extends Omit<FingerprintBrowserInput, 'accountIds'> {
+  accountIds?: string[];
+}
+
+export interface FingerprintBrowserImportPreview {
+  records: FingerprintBrowserImportRow[];
+  count: number;
+}
+
+export interface FingerprintBrowserImportResult {
+  imported: number;
+  removed: number;
+  unlinkedRebates: number;
 }

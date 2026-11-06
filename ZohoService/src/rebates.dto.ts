@@ -54,6 +54,12 @@ export class RebateDto implements RebateInput {
   @MaxLength(254)
   accountEmail?: string;
 
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(128)
+  fingerprintBrowserId?: string;
+
   @Transform(trim)
   @IsString()
   @IsNotEmpty()

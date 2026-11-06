@@ -1,6 +1,7 @@
 export interface RebateInput {
   accountId: string;
   accountEmail?: string;
+  fingerprintBrowserId?: string;
   siteName: string;
   domain: string;
   registeredAt: string;
@@ -19,6 +20,9 @@ export interface RebateRecord extends RebateInput {
   accountUnknown: boolean;
   accountName: string;
   accountGroup: string;
+  fingerprintBrowserId: string;
+  fingerprintBrowserExternalId: string;
+  fingerprintBrowserSerialNumber: string;
   conversionRate: number;
   createdAt: string;
   updatedAt: string;

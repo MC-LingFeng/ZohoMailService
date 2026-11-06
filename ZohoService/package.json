@@ -22,6 +22,7 @@
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
+    "read-excel-file": "^9.3.14",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -29,6 +30,7 @@
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.3",
     "@types/node": "^22.19.0",
+    "fflate": "^0.8.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }

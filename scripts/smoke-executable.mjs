@@ -10,7 +10,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 if (!process.argv[2])
   throw new Error(
-    'Usage: node scripts/smoke-executable.mjs <native-executable>',
+    'Usage: node scripts/smoke-executable.mjs <native-executable> [window-export.xlsx]',
   );
 const sourceExecutable = resolve(process.argv[2]);
 const temporary = await realpath(await mkdtemp(join(tmpdir(), 'zohome-exe-smoke-')));
@@ -93,7 +93,7 @@ try {
   assert.ok(output.includes(join(home, 'data')), 'Data directory must resolve beside the executable');
   assert.ok(output.includes(credentialsFile), 'Credentials must resolve beside the executable');
   assert.ok((await stat(join(home, 'data', 'demo.sqlite'))).isFile());
-  for (const route of ['/', '/mail', '/accounts', '/guide', '/rebates', '/settings']) {
+  for (const route of ['/', '/mail', '/accounts', '/guide', '/rebates', '/fingerprint-browsers', '/settings']) {
     const response = await fetch(`${base}${route}`);
     assert.equal(response.status, 200);
     assert.match(await response.text(), /ZoHome/);
@@ -127,6 +127,24 @@ try {
   const record = await created.json();
   assert.equal(record.accountUnknown, true);
   assert.equal(record.accountEmail, 'standalone@outlook.com');
+  const browserResponse = await request('/fingerprint-browsers', {
+    serialNumber: '001', browserId: 'executable-smoke-browser', windowName: 'EXE smoke window',
+    proxyInfo: '', accountIds: [record.accountId],
+  });
+  assert.equal(browserResponse.status, 201);
+  const browser = await browserResponse.json();
+  assert.equal(browser.accounts[0].rebates[0].id, record.id);
+  if (process.argv[3]) {
+    const payload = { fileName: 'window-export.xlsx', content: (await readFile(resolve(process.argv[3]))).toString('base64') };
+    const previewResponse = await request('/fingerprint-browsers/import-preview', payload);
+    assert.equal(previewResponse.status, 200);
+    const preview = await previewResponse.json();
+    assert.ok(preview.count > 0);
+    assert.equal((await request('/fingerprint-browsers/import', { ...payload, confirmReplace: false })).status, 400);
+    const browsers = await (await fetch(`${base}/api/fingerprint-browsers`)).json();
+    assert.equal(browsers.total, 1);
+    assert.equal(browsers.records[0].id, browser.id);
+  }
   const rebates = await (await fetch(`${base}/api/rebates`)).json();
   assert.equal(rebates.total, 1);
   assert.equal(rebates.summary.totalRevenue, 20.5);
@@ -187,7 +205,7 @@ try {
   await stop();
   assert.deepEqual(await readdir(workingDirectory), []);
   console.log(
-    'Executable smoke passed: portable workspace independent of cwd, external database replacement/restoration and credentials preservation, explicit workspace override, embedded web + API, folder selection, standalone rebate emails, settings, secret isolation, and stop/port release.',
+    'Executable smoke passed: portable workspace independent of cwd, external database replacement/restoration and credentials preservation, explicit workspace override, embedded web + API, fingerprint browsers and optional Excel preview, folder selection, standalone rebate emails, settings, secret isolation, and stop/port release.',
   );
 } finally {
   if (child?.pid && child.exitCode === null && child.signalCode === null) {

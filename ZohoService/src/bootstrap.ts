@@ -32,6 +32,16 @@ export async function createApp(options: AppOptions = {}) {
     logger: ['error', 'warn', 'log'],
   });
   const config = app.get(AppConfig);
+  // Excel is sent as base64 JSON; retain the normal body limit on other routes.
+  const importJson = express.json({ limit: '8mb' });
+  app.use(
+    ['/api/fingerprint-browsers/import-preview', '/api/fingerprint-browsers/import'],
+    // Nest detects its global parser by function name. A named wrapper prevents
+    // this route-specific parser from suppressing JSON parsing on all other APIs.
+    function fingerprintImportJson(req: express.Request, res: express.Response, next: express.NextFunction) {
+      importJson(req, res, next);
+    },
+  );
   if (options.settingsFile)
     app.get(SettingsService).setSource(options.settingsFile, options.desktopSettings);
   app.setGlobalPrefix('api');

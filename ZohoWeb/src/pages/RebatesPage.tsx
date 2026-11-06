@@ -18,6 +18,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { api } from '../api';
+import { Link } from 'react-router-dom';
 import { formatConversion, formatConversionApprox } from '../rebates';
 import {
   EmptyState,
@@ -27,6 +28,7 @@ import {
   Spinner,
 } from '../components/ui';
 import type {
+  FingerprintBrowserOptions,
   RebateAccountOption,
   RebateCostRefresh,
   RebateInput,
@@ -167,6 +169,88 @@ function RebateEmailField({ accounts, value, onChange, disabled, keepUnknown = f
           ? '此邮箱仅保存在返利网记录中，不会加入邮箱账号或邮件页面。'
           : matched ? `已关联邮箱账号${matched.name ? ` · ${matched.name}` : ''}` : '无需先绑定邮箱；输入新地址后会自动标为“未知”，仅用于返利网记录。'}</p>
       </div>
+    </div>
+  );
+}
+
+function FingerprintBrowserFields({ browsers, value, onChange, disabled, loading, error, onRetry, previous }: {
+  browsers: FingerprintBrowserOptions['browsers'];
+  value: string;
+  onChange: (id: string) => void;
+  disabled: boolean;
+  loading: boolean;
+  error: string;
+  onRetry: () => void;
+  previous: RebateRecord | null;
+}) {
+  const id = useId();
+  const [search, setSearch] = useState('');
+  const matching = browsers.filter((browser) =>
+    `${browser.browserId} ${browser.serialNumber} ${browser.windowName}`
+      .toLowerCase().includes(search.trim().toLowerCase()),
+  );
+  const selected = browsers.find((browser) => browser.id === value);
+  const choices = matching.slice(0, 100);
+  if (selected && !choices.some((browser) => browser.id === selected.id)) choices.unshift(selected);
+  const unavailable = Boolean(value && !selected && !loading && !error);
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-surface-muted p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-medium text-ink">关联指纹浏览器（选填）</p>
+        <Link to="/fingerprint-browsers" className="text-[11px] text-accent hover:underline">管理指纹浏览器</Link>
+      </div>
+      <p className="text-[10px] leading-5 text-subtle">选择 ID 或序号会自动对应同一指纹浏览器，不能手动填写。留空则不关联。</p>
+      <div className="search-field">
+        <Search size={14} aria-hidden="true" />
+        <input
+          aria-label="搜索可关联的指纹浏览器"
+          placeholder="按 ID、序号或窗口名称搜索选项…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onKeyDown={(event) => { if (event.key === 'Enter') event.preventDefault(); }}
+          disabled={disabled || loading}
+        />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {(['browserId', 'serialNumber'] as const).map((field) => (
+          <div key={field}>
+            <label className="field-label" htmlFor={`${id}-${field}`}>指纹浏览器{field === 'browserId' ? ' ID' : '序号'}</label>
+            <select
+              id={`${id}-${field}`}
+              className="input"
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              disabled={disabled || loading}
+            >
+              <option value="">不关联指纹浏览器</option>
+              {value && !selected && (
+                <option value={value} disabled>
+                  {field === 'browserId' ? previous?.fingerprintBrowserExternalId : previous?.fingerprintBrowserSerialNumber}
+                  {loading ? '（正在核对）' : error ? '（待核对）' : '（已失效，请重新选择）'}
+                </option>
+              )}
+              {choices.map((browser) => (
+                <option key={browser.id} value={browser.id}>
+                  {browser[field]} · {browser.windowName}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
+      {selected && <p className="text-[10px] leading-5 text-muted">已选窗口：{selected.windowName} · ID {selected.browserId} · 序号 {selected.serialNumber}</p>}
+      {loading && <p className="text-[10px] text-subtle" role="status">正在读取指纹浏览器选项…</p>}
+      {unavailable && <ErrorNotice message="原关联指纹浏览器已被删除或替换，请重新选择或清空关联后保存。" />}
+      {error && (
+        <div className="space-y-2">
+          <ErrorNotice message={`指纹浏览器选项加载失败：${error}`} />
+          <p className="text-[10px] leading-5 text-subtle">已有选择需重新核对后才能保存；清空关联可继续保存返利记录。</p>
+          <button type="button" className="btn-quiet" onClick={onRetry} disabled={disabled}><RefreshCw size={12} />重新读取指纹浏览器</button>
+        </div>
+      )}
+      {!loading && !error && browsers.length === 0 && <p className="text-[10px] leading-5 text-subtle">暂无指纹浏览器，可先到管理页新增或导入，也可暂不关联。</p>}
+      {search && matching.length === 0 && browsers.length > 0 && <p className="text-[10px] text-subtle">没有匹配的指纹浏览器{selected ? '，当前关联已保留' : ''}。</p>}
+      {matching.length > 100 && <p className="text-[10px] text-subtle">匹配 {matching.length} 个，显示前 100 个；继续输入可缩小范围。</p>}
     </div>
   );
 }
@@ -342,6 +426,7 @@ const blankFields = (accountId: string, accountEmail = ''): EditorFields => ({
   settlementCycle: '',
   banned: false,
   ip: '',
+  fingerprintBrowserId: '',
 });
 
 export default function RebatesPage() {
@@ -363,6 +448,10 @@ export default function RebatesPage() {
   const [options, setOptions] = useState<RebateOptions | null>(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [optionsError, setOptionsError] = useState('');
+  const [fingerprintBrowsers, setFingerprintBrowsers] = useState<FingerprintBrowserOptions['browsers']>([]);
+  const [fingerprintOptionsLoading, setFingerprintOptionsLoading] = useState(false);
+  const [fingerprintOptionsError, setFingerprintOptionsError] = useState('');
+  const [fingerprintOptionsRevision, setFingerprintOptionsRevision] = useState(0);
   const [editing, setEditing] = useState<RebateRecord | null>(null);
   const [linkKnown, setLinkKnown] = useState(false);
   const [fields, setFields] = useState<EditorFields>(() => blankFields(''));
@@ -443,6 +532,25 @@ export default function RebatesPage() {
     return () => controller.abort();
   }, [editorEpoch, optionsRevision, revision]);
 
+  useEffect(() => {
+    if (!editorOpen) return;
+    const controller = new AbortController();
+    setFingerprintOptionsLoading(true);
+    setFingerprintOptionsError('');
+    void api<FingerprintBrowserOptions>('/fingerprint-browsers/options', { signal: controller.signal })
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        setFingerprintBrowsers(result.browsers);
+        setFingerprintOptionsLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setFingerprintOptionsError(error instanceof Error ? error.message : '指纹浏览器选项加载失败');
+        setFingerprintOptionsLoading(false);
+      });
+    return () => controller.abort();
+  }, [editorOpen, editorEpoch, fingerprintOptionsRevision]);
+
   const changeFilter = (
     key: 'search' | 'accountId' | 'settled' | 'banned',
     value: string,
@@ -456,6 +564,9 @@ export default function RebatesPage() {
     setFormError('');
     setOptionsError('');
     setOptionsLoading(true);
+    setFingerprintBrowsers([]);
+    setFingerprintOptionsError('');
+    setFingerprintOptionsLoading(true);
     setEditorEpoch((value) => value + 1);
     setFields(
       record
@@ -472,6 +583,7 @@ export default function RebatesPage() {
             settlementCycle: record.settlementCycle,
             banned: record.banned,
             ip: record.ip,
+            fingerprintBrowserId: record.fingerprintBrowserId || '',
           }
         : blankFields(
             rebateAccounts.find((account) => account.id === filters.accountId)?.unknown ? '' : filters.accountId,
@@ -490,6 +602,14 @@ export default function RebatesPage() {
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (busy || costsRefreshLock.current) return;
+    if (fields.fingerprintBrowserId && (fingerprintOptionsLoading || fingerprintOptionsError)) {
+      setFormError('请先重新读取并核对指纹浏览器选项，或清空关联后保存。');
+      return;
+    }
+    if (fields.fingerprintBrowserId && !fingerprintBrowsers.some((browser) => browser.id === fields.fingerprintBrowserId)) {
+      setFormError('关联指纹浏览器已失效，请重新选择或清空关联后保存。');
+      return;
+    }
     setBusy(true);
     setFormError('');
     const accountEmail = fields.accountEmail?.trim().toLowerCase();
@@ -809,14 +929,16 @@ export default function RebatesPage() {
               role="region"
               aria-label="返利网注册明细表，可左右滚动"
             >
-              <table className="w-full min-w-[1680px] text-left text-[11px]">
+              <table className="w-full min-w-[1920px] text-left text-[11px]">
                 <caption className="sr-only">
-                  各邮箱注册的返利网、Offer、收支、结款、封户及 IP 信息
+                  各邮箱关联的指纹浏览器 ID、序号及注册的返利网、Offer、收支、结款、封户和 IP 信息
                 </caption>
                 <thead className="bg-surface-muted text-[10px] font-medium text-muted">
                   <tr>
                     {[
                       '所属邮箱',
+                      'ID',
+                      '序号',
                       '返利网 / 域名',
                       '创建时间',
                       'Offer 名称',
@@ -832,7 +954,7 @@ export default function RebatesPage() {
                       <th
                         key={heading}
                         scope="col"
-                        className={`whitespace-nowrap bg-surface-muted px-4 py-3.5 font-medium ${index === 0 ? 'sm:sticky sm:left-0 sm:z-10' : index === 11 ? 'sticky right-0 z-20 border-l border-line-soft' : ''}`}
+                        className={`whitespace-nowrap bg-surface-muted px-4 py-3.5 font-medium ${index === 0 ? 'sm:sticky sm:left-0 sm:z-10' : heading === '操作' ? 'sticky right-0 z-20 border-l border-line-soft' : ''}`}
                       >
                         {heading}
                       </th>
@@ -856,6 +978,12 @@ export default function RebatesPage() {
                         <span className="mt-2 inline-block text-[10px] text-subtle">
                           {record.accountGroup || '未分组'}
                         </span>
+                      </td>
+                      <td className="min-w-36 max-w-48 break-all px-4 py-4 font-mono text-[10px] text-body">
+                        {record.fingerprintBrowserExternalId || '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 tabular-nums text-body">
+                        {record.fingerprintBrowserSerialNumber || '—'}
                       </td>
                       <td className="px-4 py-4">
                         <p className="max-w-52 break-words font-medium text-ink">
@@ -1022,6 +1150,17 @@ export default function RebatesPage() {
                 关联已绑定邮箱
               </button>
             )}
+            <FingerprintBrowserFields
+              key={`fingerprint-${editorEpoch}`}
+              browsers={fingerprintBrowsers}
+              value={fields.fingerprintBrowserId || ''}
+              onChange={(value) => setField('fingerprintBrowserId', value)}
+              disabled={busy}
+              loading={fingerprintOptionsLoading}
+              error={fingerprintOptionsError}
+              onRetry={() => setFingerprintOptionsRevision((value) => value + 1)}
+              previous={editing}
+            />
             {optionsLoading && (
               <p className="text-[10px] text-subtle" role="status">
                 正在读取已保存的返利网名称、域名和 Offer…

@@ -29,6 +29,16 @@ import {
   RebateRecord,
   rebateRate,
 } from './rebates.types';
+import {
+  FingerprintBrowserAccount,
+  FingerprintBrowserImportInput,
+  FingerprintBrowserImportResult,
+  FingerprintBrowserInput,
+  FingerprintBrowserList,
+  FingerprintBrowserOptions,
+  FingerprintBrowserQuery,
+  FingerprintBrowserRecord,
+} from './fingerprint-browsers.types';
 
 const rebateMailboxId = `COALESCE(r.account_id,zohome_rebate_email_id(r.standalone_email))`;
 const rebateMailboxEmail = `COALESCE(json_extract(a.payload,'$.email'),r.standalone_email)`;
@@ -38,14 +48,17 @@ const rebateSelect = `SELECT r.*,
   ${rebateMailboxId} AS rebate_account_id,
   ${rebateMailboxEmail} AS account_email,
   ${rebateMailboxName} AS account_name,
-  ${rebateMailboxGroup} AS account_group
-  FROM rebate_registrations r LEFT JOIN accounts a ON a.id=r.account_id`;
+  ${rebateMailboxGroup} AS account_group,
+  fb.browser_id AS browser_external_id,fb.serial_number AS browser_serial_number
+  FROM rebate_registrations r LEFT JOIN accounts a ON a.id=r.account_id
+  LEFT JOIN fingerprint_browsers fb ON fb.id=r.fingerprint_browser_id`;
 
 const standaloneId = (email: string) => `rebate-email:${createHash('sha256').update(email).digest('hex')}`;
 const rebateTable = (name: string) => `CREATE TABLE ${name} (
   id TEXT PRIMARY KEY,
   account_id TEXT REFERENCES accounts(id) ON DELETE CASCADE,
   standalone_email TEXT NOT NULL DEFAULT '',
+  fingerprint_browser_id TEXT REFERENCES fingerprint_browsers(id) ON DELETE SET NULL,
   site_name TEXT NOT NULL,
   domain TEXT NOT NULL,
   registered_at TEXT NOT NULL,
@@ -96,9 +109,16 @@ export class MailStore implements OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS message_folder ON messages(account_id,folder);
       CREATE TABLE IF NOT EXISTS daily_stats (day TEXT PRIMARY KEY, sent_count INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS pending_bindings (state_hash TEXT PRIMARY KEY, payload TEXT NOT NULL, expires_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS fingerprint_browsers (
+        id TEXT PRIMARY KEY,browser_id TEXT NOT NULL UNIQUE,serial_number TEXT NOT NULL UNIQUE,
+        window_name TEXT NOT NULL,proxy_info TEXT NOT NULL DEFAULT '',account_ids TEXT NOT NULL DEFAULT '[]',
+        created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
       ${rebateTable('IF NOT EXISTS rebate_registrations')};`);
     this.migrateRebateEmails();
+    if (!this.db.prepare('PRAGMA table_info(rebate_registrations)').all().some((column) => column.name === 'fingerprint_browser_id'))
+      this.db.exec('ALTER TABLE rebate_registrations ADD COLUMN fingerprint_browser_id TEXT REFERENCES fingerprint_browsers(id) ON DELETE SET NULL');
     this.db.exec(`CREATE INDEX IF NOT EXISTS rebate_account ON rebate_registrations(account_id);
+      CREATE INDEX IF NOT EXISTS rebate_fingerprint_browser ON rebate_registrations(fingerprint_browser_id);
       CREATE INDEX IF NOT EXISTS rebate_recent ON rebate_registrations(registered_at DESC,created_at DESC,id);
       CREATE INDEX IF NOT EXISTS rebate_standalone_email ON rebate_registrations(standalone_email) WHERE account_id IS NULL;`);
     this.cleanupBindings();
@@ -219,6 +239,9 @@ export class MailStore implements OnModuleDestroy {
       accountUnknown: row.account_id === null,
       accountName: String(row.account_name || ''),
       accountGroup: String(row.account_group || ''),
+      fingerprintBrowserId: String(row.fingerprint_browser_id || ''),
+      fingerprintBrowserExternalId: String(row.browser_external_id || ''),
+      fingerprintBrowserSerialNumber: String(row.browser_serial_number || ''),
       siteName: String(row.site_name),
       domain: String(row.domain),
       registeredAt: String(row.registered_at),
@@ -260,6 +283,172 @@ export class MailStore implements OnModuleDestroy {
       domains: options('domain'),
       offerNames: options('offer_name'),
     };
+  }
+  private fingerprintBrowserEmailOptions(): FingerprintBrowserAccount[] {
+    const options = this.rebateOptions().accounts.map((account) => ({
+      ...account,
+      rebates: [] as FingerprintBrowserAccount['rebates'],
+    }));
+    const accounts = new Map(options.map((account) => [account.id, account]));
+    for (const row of this.db.prepare(`SELECT r.id,${rebateMailboxId} AS mailbox_id,
+      r.offer_name,r.site_name,r.domain FROM rebate_registrations r
+      LEFT JOIN accounts a ON a.id=r.account_id ORDER BY r.site_name,r.offer_name,r.id`).all()) {
+      accounts.get(String(row.mailbox_id))?.rebates.push({
+        id: String(row.id), offerName: String(row.offer_name),
+        siteName: String(row.site_name), domain: String(row.domain),
+      });
+    }
+    return options;
+  }
+  fingerprintBrowserOptions(): FingerprintBrowserOptions {
+    return {
+      browsers: this.db.prepare(`SELECT id,browser_id,serial_number,window_name FROM fingerprint_browsers
+        ORDER BY length(serial_number),serial_number,browser_id`).all().map((row) => ({
+        id: String(row.id), browserId: String(row.browser_id),
+        serialNumber: String(row.serial_number), windowName: String(row.window_name),
+      })),
+      accounts: this.fingerprintBrowserEmailOptions(),
+    };
+  }
+  private fingerprintBrowserRecords(): FingerprintBrowserRecord[] {
+    const accounts = new Map(this.fingerprintBrowserEmailOptions().map((account) => [account.id, account]));
+    const linked = new Map<string, Set<string>>();
+    for (const row of this.db.prepare(`SELECT DISTINCT r.fingerprint_browser_id,${rebateMailboxId} AS mailbox_id
+      FROM rebate_registrations r LEFT JOIN accounts a ON a.id=r.account_id
+      WHERE r.fingerprint_browser_id IS NOT NULL`).all()) {
+      const browserId = String(row.fingerprint_browser_id);
+      if (!linked.has(browserId)) linked.set(browserId, new Set());
+      linked.get(browserId)!.add(String(row.mailbox_id));
+    }
+    return this.db.prepare(`SELECT * FROM fingerprint_browsers
+      ORDER BY length(serial_number),serial_number,browser_id`).all().map((row) => {
+      const id = String(row.id);
+      const accountIds = (JSON.parse(String(row.account_ids)) as string[]).filter((accountId) => accounts.has(accountId));
+      const associated = new Set([...accountIds, ...(linked.get(id) || [])]);
+      return {
+        id, serialNumber: String(row.serial_number), browserId: String(row.browser_id),
+        windowName: String(row.window_name), proxyInfo: String(row.proxy_info), accountIds,
+        accounts: [...associated].flatMap((accountId) => accounts.has(accountId) ? [accounts.get(accountId)!] : []),
+        createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+      };
+    });
+  }
+  fingerprintBrowsers(query: FingerprintBrowserQuery = { search: '', page: 1, pageSize: 20 }): FingerprintBrowserList {
+    const search = query.search.trim().toLocaleLowerCase();
+    const matching = this.fingerprintBrowserRecords().filter((record) => !search || [
+      record.serialNumber, record.browserId, record.windowName, record.proxyInfo,
+      ...record.accounts.flatMap((account) => [account.email, account.name,
+        ...account.rebates.flatMap((rebate) => [rebate.offerName, rebate.siteName])]),
+    ].some((value) => value.toLocaleLowerCase().includes(search)));
+    const page = Math.min(query.page, Math.max(1, Math.ceil(matching.length / query.pageSize)));
+    return {
+      records: matching.slice((page - 1) * query.pageSize, page * query.pageSize),
+      total: matching.length, page, pageSize: query.pageSize,
+    };
+  }
+  private normalizeFingerprintBrowser(
+    input: FingerprintBrowserImportInput,
+    fallbackAccountIds: string[] = [],
+    allowedAccountIds = new Set(this.rebateOptions().accounts.map((account) => account.id)),
+  ): FingerprintBrowserInput {
+    const fields = [
+      ['serialNumber', '序号', 100], ['browserId', 'ID', 128],
+      ['windowName', '窗口名称', 200], ['proxyInfo', '代理信息', 4000],
+    ] as const;
+    const normalized = {} as FingerprintBrowserInput;
+    for (const [key, label, max] of fields) {
+      if (typeof input[key] !== 'string' || input[key].trim().length > max ||
+          (key !== 'proxyInfo' && !input[key].trim()))
+        throw new BadRequestException(`${label}${key === 'proxyInfo' ? '' : '不能为空，且'}须为不超过 ${max} 个字符的文本`);
+      normalized[key] = input[key].trim();
+    }
+    const accountIds = input.accountIds === undefined
+      ? fallbackAccountIds.filter((id) => allowedAccountIds.has(id)) : input.accountIds;
+    if (!Array.isArray(accountIds) || accountIds.length > 2000 || accountIds.some((id) =>
+      typeof id !== 'string' || !allowedAccountIds.has(id)))
+      throw new BadRequestException('关联邮箱无效，请从返利网已有邮箱中选择');
+    normalized.accountIds = [...new Set(accountIds)];
+    return normalized;
+  }
+  private assertFingerprintBrowserUnique(input: FingerprintBrowserInput, exceptId = '') {
+    if (this.db.prepare('SELECT id FROM fingerprint_browsers WHERE id<>? AND browser_id=?').get(exceptId, input.browserId))
+      throw new BadRequestException('指纹浏览器 ID 已存在');
+    if (this.db.prepare('SELECT id FROM fingerprint_browsers WHERE id<>? AND serial_number=?').get(exceptId, input.serialNumber))
+      throw new BadRequestException('指纹浏览器序号已存在');
+  }
+  private writeFingerprintBrowser(id: string, input: FingerprintBrowserInput, createdAt: string, updatedAt: string) {
+    this.db.prepare(`INSERT INTO fingerprint_browsers(id,browser_id,serial_number,window_name,proxy_info,account_ids,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET browser_id=excluded.browser_id,
+      serial_number=excluded.serial_number,window_name=excluded.window_name,proxy_info=excluded.proxy_info,
+      account_ids=excluded.account_ids,updated_at=excluded.updated_at`).run(
+      id, input.browserId, input.serialNumber, input.windowName, input.proxyInfo,
+      JSON.stringify(input.accountIds), createdAt, updatedAt,
+    );
+  }
+  createFingerprintBrowser(input: FingerprintBrowserInput) {
+    const normalized = this.normalizeFingerprintBrowser(input);
+    this.assertFingerprintBrowserUnique(normalized);
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    this.writeFingerprintBrowser(id, normalized, now, now);
+    return this.fingerprintBrowserRecords().find((record) => record.id === id)!;
+  }
+  updateFingerprintBrowser(id: string, input: FingerprintBrowserInput) {
+    const previous = this.db.prepare('SELECT created_at FROM fingerprint_browsers WHERE id=?').get(id);
+    if (!previous) throw new NotFoundException('指纹浏览器不存在');
+    const normalized = this.normalizeFingerprintBrowser(input);
+    this.assertFingerprintBrowserUnique(normalized, id);
+    this.writeFingerprintBrowser(id, normalized, String(previous.created_at), new Date().toISOString());
+    return this.fingerprintBrowserRecords().find((record) => record.id === id)!;
+  }
+  removeFingerprintBrowser(id: string) {
+    const result = this.db.prepare('DELETE FROM fingerprint_browsers WHERE id=?').run(id);
+    if (!result.changes) throw new NotFoundException('指纹浏览器不存在');
+    return { success: true };
+  }
+  replaceFingerprintBrowsers(inputs: FingerprintBrowserImportInput[]): FingerprintBrowserImportResult {
+    if (!Array.isArray(inputs) || !inputs.length || inputs.length > 10000)
+      throw new BadRequestException('导入须包含 1 至 10000 条有效指纹浏览器记录');
+    const existing = this.db.prepare('SELECT * FROM fingerprint_browsers').all();
+    const byBrowserId = new Map(existing.map((row) => [String(row.browser_id), row]));
+    const allowed = new Set(this.rebateOptions().accounts.map((account) => account.id));
+    const normalized = inputs.map((input) => this.normalizeFingerprintBrowser(
+      input, JSON.parse(String(byBrowserId.get(input.browserId?.trim())?.account_ids || '[]')) as string[], allowed,
+    ));
+    const browserIds = new Set<string>();
+    const serialNumbers = new Set<string>();
+    for (const input of normalized) {
+      if (browserIds.has(input.browserId)) throw new BadRequestException(`导入存在重复 ID：${input.browserId}`);
+      if (serialNumbers.has(input.serialNumber)) throw new BadRequestException(`导入存在重复序号：${input.serialNumber}`);
+      browserIds.add(input.browserId);
+      serialNumbers.add(input.serialNumber);
+    }
+    const removed = existing.filter((row) => !browserIds.has(String(row.browser_id)));
+    let unlinkedRebates = 0;
+    const now = new Date().toISOString();
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      for (const row of removed) {
+        unlinkedRebates += Number(this.db.prepare(`UPDATE rebate_registrations SET fingerprint_browser_id=NULL,updated_at=?
+          WHERE fingerprint_browser_id=?`).run(now, String(row.id)).changes);
+        this.db.prepare('DELETE FROM fingerprint_browsers WHERE id=?').run(String(row.id));
+      }
+      // Permit serial numbers to be reassigned between retained browsers atomically.
+      for (const row of existing) {
+        if (browserIds.has(String(row.browser_id)))
+          this.db.prepare('UPDATE fingerprint_browsers SET serial_number=? WHERE id=?').run(`import-${randomUUID()}`, String(row.id));
+      }
+      for (const input of normalized) {
+        const previous = byBrowserId.get(input.browserId);
+        this.writeFingerprintBrowser(previous ? String(previous.id) : randomUUID(), input,
+          previous ? String(previous.created_at) : now, now);
+      }
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+    return { imported: normalized.length, removed: removed.length, unlinkedRebates };
   }
   rebateCostTargets(): RebateCostTarget[] {
     return this.db
@@ -463,17 +652,21 @@ export class MailStore implements OnModuleDestroy {
     updatedAt: string,
   ) {
     const mailbox = this.resolveRebateMailbox(input);
+    const fingerprintBrowserId = input.fingerprintBrowserId?.trim() || null;
+    if (fingerprintBrowserId && !this.db.prepare('SELECT id FROM fingerprint_browsers WHERE id=?').get(fingerprintBrowserId))
+      throw new BadRequestException('指纹浏览器不存在，请从已有 ID 或序号中重新选择');
     this.db
       .prepare(
         `INSERT INTO rebate_registrations(
       id,account_id,standalone_email,site_name,domain,registered_at,offer_name,revenue_cents,cost_cents,
-      settled,settlement_cycle,banned,ip,created_at,updated_at
-    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      settled,settlement_cycle,banned,ip,created_at,updated_at,fingerprint_browser_id
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
       account_id=excluded.account_id,standalone_email=excluded.standalone_email,site_name=excluded.site_name,domain=excluded.domain,
       registered_at=excluded.registered_at,offer_name=excluded.offer_name,
       revenue_cents=excluded.revenue_cents,cost_cents=excluded.cost_cents,
       settled=excluded.settled,settlement_cycle=excluded.settlement_cycle,
-      banned=excluded.banned,ip=excluded.ip,updated_at=excluded.updated_at`,
+      banned=excluded.banned,ip=excluded.ip,updated_at=excluded.updated_at,
+      fingerprint_browser_id=excluded.fingerprint_browser_id`,
       )
       .run(
         id,
@@ -491,6 +684,7 @@ export class MailStore implements OnModuleDestroy {
         input.ip,
         createdAt,
         updatedAt,
+        fingerprintBrowserId,
       );
   }
   private resolveRebateMailbox(input: RebateInput): { accountId: string | null; email: string } {

@@ -13,9 +13,10 @@ import { GoogleAdsClient } from './google-ads';
 import { RebateCostsService } from './rebate-costs.service';
 import { OutlookClient } from './outlook';
 import { OutlookMailService } from './outlook-mail.service';
+import { FingerprintBrowsersController } from './fingerprint-browsers.controller';
 
 @Module({
-  controllers: [AppController, RebatesController, SettingsController],
+  controllers: [AppController, RebatesController, SettingsController, FingerprintBrowsersController],
   providers: [
     AppConfig,
     SessionService,

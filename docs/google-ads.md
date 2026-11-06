@@ -64,7 +64,11 @@ docker compose -f compose.yaml -f compose.ads.yaml down
 
 ## Windows EXE 运行
 
-将 JSON 放入工作区 `%LOCALAPPDATA%\ZoHome\credentials.json`，在同目录的 `zohome.env` 中添加上述 Ads 配置，然后重启 EXE。使用 `ZOHOME_HOME` 自定义工作区时，JSON 和配置也放到该工作区；相对路径以工作区为准。EXE 不包含开发机的 Ads 密钥。
+将用户自己的服务账号 JSON 放在 `ZoHome-win-x64.exe` 旁，命名为 `credentials.json`，在同目录的 `zohome.env` 中添加上述 Ads 配置。EXE 默认以自身所在目录为工作区，路径不受启动终端的当前目录影响；`./data` 数据库目录与 `credentials.json` 分别独立保存。
+
+使用 `ZOHOME_HOME` 时，该变量优先指定工作区，JSON 和配置也放到该工作区。`ADS_CREDENTIALS_FILE` 可以独立指定其他绝对路径，或使用相对于 `zohome.env` 所在目录的路径。EXE 与打包产物均不包含开发机的 Ads 密钥。
+
+切换服务账号前先关闭程序并备份原 `credentials.json`，替换 JSON，必要时更新 `ADS_MANAGER_ACCOUNT`，再重新启动 EXE。替换数据库时也应先停机、备份整个数据目录，并保留与数据库对应的 `TOKEN_ENCRYPTION_KEY`。旧版 `%LOCALAPPDATA%\ZoHome` 工作区需手动复制配置、整个 `data` 和 JSON 到 EXE 旁，或用 `ZOHOME_HOME` 继续指定旧目录；详见 [Windows EXE 使用与构建](windows-exe.md)。
 
 ## 常见提示
 

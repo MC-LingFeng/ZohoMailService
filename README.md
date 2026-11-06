@@ -24,7 +24,17 @@ Zoho 的邮件标签根据账号实际文件夹动态显示，通知（Notificat
 
 Windows x64 用户可以双击 `ZoHome-win-x64.exe` 启动，无需安装 Node.js 或 npm。程序在同一个进程中提供网页和 API，自动打开 <http://localhost:3001>，并保留一个控制台窗口。按 **Ctrl+C** 或关闭该控制台窗口即可停止整个应用；只关闭浏览器标签页不会停止服务。
 
-首次运行会在 `%LOCALAPPDATA%\ZoHome` 创建工作区和 `zohome.env`，默认使用演示模式，并自动生成工作区密码和令牌加密密钥。真实模式、密码和 OAuth 回调均在这个配置文件中管理；EXE 中不包含开发机的环境变量、邮箱配置或数据库。
+EXE 默认使用自身所在目录作为工作区，首次运行会创建 `zohome.env`，默认使用演示模式，并自动生成工作区密码和令牌加密密钥。数据库放在同目录的 `./data` 中，Google Ads 服务账号密钥由用户放在同目录的 `credentials.json`，均独立于 EXE，方便备份和替换。路径不受启动终端所在目录影响，也可通过 `ZOHOME_HOME` 指定其他工作区。
+
+```text
+ZoHome/
+├── ZoHome-win-x64.exe
+├── zohome.env           # 首次启动生成，保留数据库对应的加密密钥
+├── data/                # 独立的 SQLite 数据目录
+└── credentials.json     # 使用 Google Ads 时自行放入
+```
+
+替换数据库或密钥文件前先关闭程序并备份；数据库必须与原有 `TOKEN_ENCRYPTION_KEY` 配套。升级只需替换 EXE，保留旁边的配置和数据。旧版 `%LOCALAPPDATA%\ZoHome` 工作区不会自动迁移，需将其中的 `zohome.env`、整个 `data` 和 `credentials.json`（如有）复制到 EXE 旁，或用 `ZOHOME_HOME` 继续指定旧工作区。EXE 不包含开发机的配置、数据库或密钥。
 
 要接入真实邮箱，可在「系统设置」中将运行模式改为真实邮箱并保存，然后关闭程序、重新运行；也可关闭程序后，在 `zohome.env` 中把 `APP_MODE` 改为 `live`。登录密码使用文件中的 `APP_PASSWORD`，邮箱应用凭据仍在「邮箱账号」页面填写。**EXE 的 Zoho 授权回调是 `http://localhost:3001/api/auth/zoho/callback`，与开发环境的 5173 端口不同。**
 
@@ -36,7 +46,7 @@ npm install
 npm run package:win
 ```
 
-产物位于 `release/ZoHome-win-x64.exe`。构建要求使用 `.nvmrc` 指定的 **Node.js 22.22.2**；使用该 EXE 的用户不需要安装任何开发工具。打包脚本可在 macOS 上交叉构建 Windows x64 产物，但 macOS 无法执行 Windows EXE，仍需在 Windows 上确认实际运行情况。详细步骤见 [Windows EXE 使用与构建](docs/windows-exe.md)。
+产物位于 `release/ZoHome-win-x64.exe`，同时准备空的 `release/data/`；重复打包保留已有的配置、数据库和 `credentials.json`。构建要求使用 `.nvmrc` 指定的 **Node.js 22.22.2**；使用该 EXE 的用户不需要安装任何开发工具。打包脚本可在 macOS 上交叉构建 Windows x64 产物，但 macOS 无法执行 Windows EXE，仍需在 Windows 上确认实际运行情况。详细步骤见 [Windows EXE 使用与构建](docs/windows-exe.md)。
 
 ## Docker 启动
 

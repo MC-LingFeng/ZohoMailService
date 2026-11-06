@@ -120,7 +120,7 @@ export async function startDesktop(
   }
   const url = configuration.env.FRONTEND_URL;
   console.log(
-    `\nZoHome 已启动（${configuration.env.APP_MODE === 'demo' ? '演示模式' : '真实邮箱模式'}）\n访问地址：${url}\n配置文件：${configuration.configPath}\n数据目录：${configuration.env.DATA_DIR}\n关闭此控制台窗口或按 Ctrl+C，ZoHome 服务将同时停止。\n`,
+    `\nZoHome 已启动（${configuration.env.APP_MODE === 'demo' ? '演示模式' : '真实邮箱模式'}）\n访问地址：${url}\n配置文件：${configuration.configPath}\n数据目录：${configuration.env.DATA_DIR}\nGoogle Ads 凭据文件：${configuration.env.ADS_CREDENTIALS_FILE}\n关闭此控制台窗口或按 Ctrl+C，ZoHome 服务将同时停止。\n`,
   );
   if (options.openBrowser !== false && process.env.ZOHOME_NO_BROWSER !== '1')
     launchBrowser(url);

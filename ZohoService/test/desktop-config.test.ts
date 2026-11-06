@@ -167,3 +167,15 @@ test('desktop home uses an explicit override or Windows local application data',
     join('/temporary/local-app-data', 'ZoHome'),
   );
 });
+
+test('packaged desktop uses the executable directory unless a workspace override is provided', () => {
+  const executable = resolve('/temporary/portable ZoHome/ZoHome-win-x64.exe');
+  assert.equal(
+    desktopHome({ LOCALAPPDATA: '/unrelated/local-app-data' }, 'win32', executable),
+    resolve('/temporary/portable ZoHome'),
+  );
+  assert.equal(
+    desktopHome({ ZOHOME_HOME: './custom-workspace' }, 'win32', executable),
+    resolve('./custom-workspace'),
+  );
+});

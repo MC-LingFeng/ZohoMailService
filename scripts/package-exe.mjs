@@ -286,7 +286,11 @@ await copyFile(
 for (const name of ['google-ads.md', 'outlook.md']) {
   await copyFile(join(root, 'docs', name), join(outputDir, name));
 }
+// Runtime files stay beside the executable. Rebuilding only ensures the data
+// directory exists; it never copies or replaces databases, settings, or keys.
+await mkdir(join(outputDir, 'data'), { recursive: true, mode: 0o700 });
 console.log(
   `已生成：${relative(root, executable)} (${((await readFile(executable)).length / 1024 / 1024).toFixed(1)} MB)`,
 );
+console.log('数据库使用 EXE 同目录的 data；Google Ads 密钥请自行放入同目录 credentials.json。');
 console.log(`SHA256：${checksum}`);

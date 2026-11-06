@@ -19,3 +19,6 @@ ZohoService/data/
 ZohoService/.data/
 .openai/
 release/
+/data/
+/zohome.env
+credentials.json

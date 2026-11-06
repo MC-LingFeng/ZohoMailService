@@ -1,7 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync, chmodSync, openSync, closeSync, fsyncSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
-import { isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { isSea } from 'node:sea';
 import { parse } from 'dotenv';
 
 export interface DesktopConfiguration {
@@ -13,8 +14,12 @@ export interface DesktopConfiguration {
 export function desktopHome(
   env: NodeJS.ProcessEnv = process.env,
   platform = process.platform,
+  executable = isSea() ? process.execPath : undefined,
 ) {
   if (env.ZOHOME_HOME) return resolve(env.ZOHOME_HOME);
+  // A packaged app keeps its replaceable configuration and data beside the EXE,
+  // even when launched by a shortcut or from a different working directory.
+  if (executable) return dirname(resolve(executable));
   if (platform === 'win32')
     return join(
       env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local'),
@@ -76,7 +81,7 @@ export function loadDesktopConfiguration(
         `APP_PASSWORD=${randomBytes(24).toString('base64url')}`,
         '# 令牌加密密钥（修改后旧授权失效）',
         `TOKEN_ENCRYPTION_KEY=${randomBytes(32).toString('hex')}`,
-        '# 数据目录',
+        '# 数据目录（相对路径以此配置文件所在目录为准）',
         'DATA_DIR=./data',
         '# 接口请求间隔（毫秒，至少 2100）',
         'ZOHO_MIN_REQUEST_INTERVAL_MS=2100',

@@ -4,7 +4,7 @@ ZoHome 的 Windows 分发文件是 `ZoHome-win-x64.exe`，适用于 Windows x64�
 
 ## 启动和停止
 
-1. 将 `ZoHome-win-x64.exe` 放到本机方便访问的目录。
+1. 将 `ZoHome-win-x64.exe` 放到本机方便访问、允许写入的目录。
 2. 双击运行。程序会打开一个控制台窗口，并自动在默认浏览器中打开 <http://localhost:3001>。
 3. 如果浏览器没有自动打开，手动访问上面的地址。
 4. 使用结束后，在控制台按 **Ctrl+C**，或者直接关闭该控制台窗口。网页和 API 属于同一个应用进程，会一起停止。
@@ -15,19 +15,42 @@ ZoHome 的 Windows 分发文件是 `ZoHome-win-x64.exe`，适用于 Windows x64�
 
 ## 配置与数据
 
-工作区默认位于：
+打包后的 EXE 默认使用自身所在目录作为工作区，不受启动终端的当前目录或快捷方式的起始位置影响：
 
 ```text
-%LOCALAPPDATA%\ZoHome
+ZoHome/
+├── ZoHome-win-x64.exe
+├── zohome.env           # 首次启动生成的应用配置
+├── data/                # 独立 SQLite 数据目录
+│   ├── demo.sqlite      # 演示模式数据库
+│   └── live.sqlite      # 真实模式数据库，启用后创建
+└── credentials.json     # Google Ads 服务账号密钥，用户自行放入
 ```
 
-可以在 Windows 资源管理器地址栏中粘贴这个路径。首次运行会创建 `zohome.env`，其中包含演示模式配置、随机生成的 `APP_PASSWORD` 和稳定保存的 `TOKEN_ENCRYPTION_KEY`。密码和密钥不会输出到控制台。
+首次运行会创建 `zohome.env`，其中包含演示模式配置、随机生成的 `APP_PASSWORD` 和稳定保存的 `TOKEN_ENCRYPTION_KEY`。密码和密钥不会输出到控制台。`credentials.json` 是可选的外部文件，使用 Google Ads 时自行提供；程序不会生成或打包真实密钥。
 
 打开网页中的「系统设置」，可以编辑当前工作区的 `zohome.env`。页面自动识别配置项，以对应的中文注释作为标题，密码和密钥只显示是否已配置，留空保留原值。保存后关闭控制台并重新启动 EXE，配置才会生效。已有文件的注释可以直接修改，配置值保持不变即可。
 
-配置与数据库都保存在 EXE 之外。因此，替换或移动 EXE 不会自动清除账号数据，程序更新也不需要重新分发数据库。备份工作区时，应保留数据库及其对应的加密密钥；更换密钥会使旧授权无法解密。
+数据库和 Google Ads 密钥使用独立路径，可在 `zohome.env` 或「系统设置」中配置：
 
-升级时先关闭旧程序，再替换 EXE，继续使用原工作区。新版启动会补齐旧 `zohome.env` 中缺少的配置项，保留已有值和 `TOKEN_ENCRYPTION_KEY`；数据库会自动迁移，已有邮箱授权和返利网记录继续使用，无需重新录入。不要用新生成的配置覆盖原有加密密钥。
+```dotenv
+DATA_DIR=./data
+ADS_CREDENTIALS_FILE=./credentials.json
+```
+
+相对路径以 `zohome.env` 所在目录为准，也可分别填写绝对路径。配置、数据库和密钥均在 EXE 之外；移动整个工作区即可携带这些文件。若只将 EXE 移到另一个目录，默认会使用新目录中的工作区。
+
+替换数据库或 Google Ads 权限文件时：
+
+1. 关闭 ZoHome 控制台，确认原程序已经停止。
+2. 备份当前 `zohome.env`、整个 `data` 目录和 `credentials.json`（如有）。SQLite 的 `-wal`、`-shm` 文件如存在，也须随数据目录一起保留。
+3. 将目标数据库的整个数据目录替换到 `data`，或在 `DATA_DIR` 中指定目标目录。**数据库必须使用与其对应的原有 `TOKEN_ENCRYPTION_KEY`**，否则已有邮箱授权无法解密。
+4. 如需更换 Google Ads 服务账号，用新的 JSON 替换 `credentials.json`，或修改 `ADS_CREDENTIALS_FILE`；经理号变更时同步修改 `ADS_MANAGER_ACCOUNT`。
+5. 重新启动 EXE，确认数据及「刷新预算」读取权限。
+
+更新程序时先关闭旧程序，只替换同目录中的 EXE，保留已有配置、`data` 和 `credentials.json`。新版启动会补齐旧 `zohome.env` 中缺少的配置项，保留已有值和 `TOKEN_ENCRYPTION_KEY`；数据库结构会自动升级，已有邮箱授权和返利网记录继续使用。不要用新生成的配置覆盖原有加密密钥。
+
+旧版默认工作区位于 `%LOCALAPPDATA%\ZoHome`。新版不会自动迁移旧工作区：请先关闭旧程序，再把其中的 `zohome.env`、整个 `data` 目录和 `credentials.json`（如有）复制到 EXE 所在目录；也可以按下文设置 `ZOHOME_HOME`，继续使用原目录。若旧配置使用了其他绝对数据路径，迁移后仍按该配置读取。
 
 需要自定义工作区位置时，在启动前设置 `ZOHOME_HOME`。例如，在 PowerShell 中运行：
 
@@ -36,7 +59,9 @@ $env:ZOHOME_HOME = 'D:\ZoHomeData'
 & '.\ZoHome-win-x64.exe'
 ```
 
-此设置对当前 PowerShell 会话及其启动的程序生效。以后使用同一工作区时，需要继续设置相同的 `ZOHOME_HOME`；直接双击 EXE 会使用默认位置。
+`ZOHOME_HOME` 优先于 EXE 所在目录。此设置对当前 PowerShell 会话及其启动的程序生效；以后使用同一工作区时，需要继续设置相同的变量。直接双击 EXE 会使用其所在目录，除非已为该用户持久设置了 `ZOHOME_HOME`。
+
+源码命令 `npm run start:desktop` 保留系统用户数据目录的默认行为，在 Windows 上为 `%LOCALAPPDATA%\ZoHome`；上述 EXE 旁的默认布局适用于打包后的可执行文件。
 
 ## 接入真实 Zoho 邮箱
 
@@ -80,10 +105,11 @@ OUTLOOK_TENANT=common
 
 ## Google Ads 刷新成本
 
-将服务账号 JSON 放在工作区中：
+将服务账号 JSON 放在 EXE 旁的工作区中：
 
 ```text
-%LOCALAPPDATA%\ZoHome\credentials.json
+ZoHome-win-x64.exe
+credentials.json
 ```
 
 在「系统设置」或工作区的 `zohome.env` 中配置：
@@ -94,7 +120,7 @@ ADS_CREDENTIALS_FILE=./credentials.json
 ADS_API_VERSION=v26
 ```
 
-相对密钥路径以工作区为准；使用 `ZOHOME_HOME` 时，把 JSON 放到自定义工作区。密钥是外部文件，不会嵌入 EXE，分发 EXE 时也不会复制开发机密钥。
+相对密钥路径以 `zohome.env` 所在目录为准；使用 `ZOHOME_HOME` 时，把 JSON 放到自定义工作区，也可通过 `ADS_CREDENTIALS_FILE` 独立指定其他路径。密钥是外部文件，不会嵌入 EXE，分发 EXE 时也不会复制开发机密钥。更换 JSON 前关闭程序，替换后重新启动。
 
 服务账号须具有经理号读取权限，其 Google Cloud 项目须能访问正式 Ads 账户。当前接入不需要 Developer Token。运行 EXE 的电脑需要能连接 Google OAuth 和 Google Ads API；修改配置后重启，再在「返利网」点击「刷新预算」，以美元累计消费覆盖保存成本。完整权限和分摊规则见 [Google Ads 成本刷新](google-ads.md)。
 
@@ -118,13 +144,18 @@ npm install
 npm run package:win
 ```
 
-输出文件：
+输出目录：
 
 ```text
-release/ZoHome-win-x64.exe
+release/
+├── ZoHome-win-x64.exe
+├── ZoHome-win-x64.exe.sha256
+├── data/                      # 新分发目录中为空
+├── README.md
+└── …                          # 接入说明及依赖许可证
 ```
 
-打包过程会构建前端和服务端，下载对应版本的官方 Windows x64 Node.js 运行时，校验官方 SHA-256，再将应用和静态页面注入可执行文件。构建包含所需源代码和编译资产，不会将开发机的 `.env`、运行数据库、邮箱授权或 Google Ads 密钥复制进分发文件。
+打包过程会构建前端和服务端，下载对应版本的官方 Windows x64 Node.js 运行时，校验官方 SHA-256，再将应用和静态页面注入可执行文件，同时准备独立的空 `data/` 目录。构建包含所需源代码和编译资产，不会将开发机的 `.env`、运行数据库、邮箱授权或 Google Ads 密钥复制进分发文件。重复打包不会清空已有 `release/data/`，也不会覆盖已有 `release/zohome.env` 或 `release/credentials.json`。
 
 可使用 PowerShell 计算最终文件的 SHA-256：
 

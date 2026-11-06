@@ -9,6 +9,7 @@ import { mkdirSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { AppConfig } from './config';
+import { decryptToken, encryptToken } from './security';
 import {
   Account,
   Activity,
@@ -38,6 +39,8 @@ import {
   FingerprintBrowserOptions,
   FingerprintBrowserQuery,
   FingerprintBrowserRecord,
+  FingerprintBrowserOverview,
+  FingerprintBrowserOverviewRow,
 } from './fingerprint-browsers.types';
 
 const rebateMailboxId = `COALESCE(r.account_id,zohome_rebate_email_id(r.standalone_email))`;
@@ -61,6 +64,7 @@ const rebateTable = (name: string) => `CREATE TABLE ${name} (
   fingerprint_browser_id TEXT REFERENCES fingerprint_browsers(id) ON DELETE SET NULL,
   site_name TEXT NOT NULL,
   domain TEXT NOT NULL,
+  login_password TEXT NOT NULL DEFAULT '',
   registered_at TEXT NOT NULL,
   offer_name TEXT NOT NULL DEFAULT '',
   revenue_cents INTEGER NOT NULL DEFAULT 0 CHECK(revenue_cents>=0),
@@ -117,6 +121,8 @@ export class MailStore implements OnModuleDestroy {
     this.migrateRebateEmails();
     if (!this.db.prepare('PRAGMA table_info(rebate_registrations)').all().some((column) => column.name === 'fingerprint_browser_id'))
       this.db.exec('ALTER TABLE rebate_registrations ADD COLUMN fingerprint_browser_id TEXT REFERENCES fingerprint_browsers(id) ON DELETE SET NULL');
+    if (!this.db.prepare('PRAGMA table_info(rebate_registrations)').all().some((column) => column.name === 'login_password'))
+      this.db.exec("ALTER TABLE rebate_registrations ADD COLUMN login_password TEXT NOT NULL DEFAULT ''");
     this.db.exec(`CREATE INDEX IF NOT EXISTS rebate_account ON rebate_registrations(account_id);
       CREATE INDEX IF NOT EXISTS rebate_fingerprint_browser ON rebate_registrations(fingerprint_browser_id);
       CREATE INDEX IF NOT EXISTS rebate_recent ON rebate_registrations(registered_at DESC,created_at DESC,id);
@@ -229,6 +235,28 @@ export class MailStore implements OnModuleDestroy {
   removeAccount(id: string) {
     this.db.prepare('DELETE FROM accounts WHERE id=?').run(id);
   }
+  private rebatePassword(stored: string): string {
+    if (!stored) return '';
+    if (stored.startsWith('plain:')) return stored.slice('plain:'.length);
+    if (!stored.startsWith('aesgcm:')) return stored;
+    try {
+      return decryptToken(stored.slice('aesgcm:'.length), this.config.encryptionKey);
+    } catch {
+      throw new BadRequestException('返利网登录密码无法解密，请使用保存该数据库时对应的 TOKEN_ENCRYPTION_KEY');
+    }
+  }
+  private storeRebatePassword(value: unknown): string {
+    if (typeof value !== 'string' || [...value].length > 1000)
+      throw new BadRequestException('返利网登录密码须为不超过 1000 个字符的文本');
+    if (!value) return '';
+    if (/^[a-f\d]{64}$/i.test(this.config.encryptionKey || ''))
+      return `aesgcm:${encryptToken(value, this.config.encryptionKey)}`;
+    if (this.config.live)
+      throw new BadRequestException('保存返利网登录密码需要有效的 TOKEN_ENCRYPTION_KEY');
+    // Zero-configuration demo workspaces have no key. Keep an explicit encoding
+    // marker so later writes can upgrade this value when a key is configured.
+    return `plain:${value}`;
+  }
   private rebateRecord(row: Record<string, unknown>): RebateRecord {
     const totalRevenue = Number(row.revenue_cents) / 100;
     const totalCost = Number(row.cost_cents) / 100;
@@ -243,6 +271,7 @@ export class MailStore implements OnModuleDestroy {
       fingerprintBrowserExternalId: String(row.browser_external_id || ''),
       fingerprintBrowserSerialNumber: String(row.browser_serial_number || ''),
       siteName: String(row.site_name),
+      loginPassword: this.rebatePassword(String(row.login_password || '')),
       domain: String(row.domain),
       registeredAt: String(row.registered_at),
       offerName: String(row.offer_name),
@@ -309,6 +338,54 @@ export class MailStore implements OnModuleDestroy {
       })),
       accounts: this.fingerprintBrowserEmailOptions(),
     };
+  }
+  fingerprintBrowserOverview(): FingerprintBrowserOverview {
+    const rows: FingerprintBrowserOverviewRow[] = [];
+    const byBrowserId = new Map<string, FingerprintBrowserOverviewRow>();
+    const manualByAccountId = new Map<string, Set<string>>();
+    const validAccountIds = new Set(this.rebateOptions().accounts.map((account) => account.id));
+    for (const browser of this.db.prepare(`SELECT id,browser_id,serial_number,window_name,account_ids
+      FROM fingerprint_browsers ORDER BY length(serial_number),serial_number,browser_id`).all()) {
+      const id = String(browser.id);
+      const row: FingerprintBrowserOverviewRow = {
+        id, browserId: String(browser.browser_id), serialNumber: String(browser.serial_number),
+        windowName: String(browser.window_name), sites: [],
+      };
+      rows.push(row);
+      byBrowserId.set(id, row);
+      for (const accountId of JSON.parse(String(browser.account_ids)) as string[]) {
+        if (!validAccountIds.has(accountId)) continue;
+        if (!manualByAccountId.has(accountId)) manualByAccountId.set(accountId, new Set());
+        manualByAccountId.get(accountId)!.add(id);
+      }
+    }
+    const siteNames = new Set<string>();
+    for (const registration of this.db.prepare(`${rebateSelect}
+      ORDER BY r.site_name COLLATE NOCASE,r.site_name,account_email,r.domain,r.offer_name,r.id`).all()) {
+      const siteName = String(registration.site_name).trim();
+      siteNames.add(siteName);
+      // An explicit record-to-browser link takes precedence over a browser's
+      // manually selected mailbox. Never copy another browser's credentials.
+      const recipients = registration.fingerprint_browser_id
+        ? [String(registration.fingerprint_browser_id)]
+        : [...(manualByAccountId.get(String(registration.rebate_account_id)) || [])];
+      for (const id of recipients) {
+        const browser = byBrowserId.get(id);
+        if (!browser) continue;
+        let site = browser.sites.find((candidate) => candidate.siteName === siteName);
+        if (!site) {
+          site = { siteName, registrations: [] };
+          browser.sites.push(site);
+        }
+        site.registrations.push({
+          id: String(registration.id), accountEmail: String(registration.account_email),
+          loginPassword: this.rebatePassword(String(registration.login_password || '')),
+          banned: Boolean(registration.banned),
+          domain: String(registration.domain), offerName: String(registration.offer_name),
+        });
+      }
+    }
+    return { siteNames: [...siteNames], rows };
   }
   private fingerprintBrowserRecords(): FingerprintBrowserRecord[] {
     const accounts = new Map(this.fingerprintBrowserEmailOptions().map((account) => [account.id, account]));
@@ -652,6 +729,13 @@ export class MailStore implements OnModuleDestroy {
     updatedAt: string,
   ) {
     const mailbox = this.resolveRebateMailbox(input);
+    const previousPassword = String(this.db.prepare('SELECT login_password FROM rebate_registrations WHERE id=?').get(id)?.login_password || '');
+    let loginPassword = previousPassword;
+    if (input.loginPassword !== undefined) {
+      loginPassword = this.storeRebatePassword(input.loginPassword);
+    } else if (previousPassword && !previousPassword.startsWith('aesgcm:') && /^[a-f\d]{64}$/i.test(this.config.encryptionKey || '')) {
+      loginPassword = this.storeRebatePassword(this.rebatePassword(previousPassword));
+    }
     const fingerprintBrowserId = input.fingerprintBrowserId?.trim() || null;
     if (fingerprintBrowserId && !this.db.prepare('SELECT id FROM fingerprint_browsers WHERE id=?').get(fingerprintBrowserId))
       throw new BadRequestException('指纹浏览器不存在，请从已有 ID 或序号中重新选择');
@@ -659,14 +743,14 @@ export class MailStore implements OnModuleDestroy {
       .prepare(
         `INSERT INTO rebate_registrations(
       id,account_id,standalone_email,site_name,domain,registered_at,offer_name,revenue_cents,cost_cents,
-      settled,settlement_cycle,banned,ip,created_at,updated_at,fingerprint_browser_id
-    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      settled,settlement_cycle,banned,ip,created_at,updated_at,fingerprint_browser_id,login_password
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
       account_id=excluded.account_id,standalone_email=excluded.standalone_email,site_name=excluded.site_name,domain=excluded.domain,
       registered_at=excluded.registered_at,offer_name=excluded.offer_name,
       revenue_cents=excluded.revenue_cents,cost_cents=excluded.cost_cents,
       settled=excluded.settled,settlement_cycle=excluded.settlement_cycle,
       banned=excluded.banned,ip=excluded.ip,updated_at=excluded.updated_at,
-      fingerprint_browser_id=excluded.fingerprint_browser_id`,
+      fingerprint_browser_id=excluded.fingerprint_browser_id,login_password=excluded.login_password`,
       )
       .run(
         id,
@@ -685,6 +769,7 @@ export class MailStore implements OnModuleDestroy {
         createdAt,
         updatedAt,
         fingerprintBrowserId,
+        loginPassword,
       );
   }
   private resolveRebateMailbox(input: RebateInput): { accountId: string | null; email: string } {

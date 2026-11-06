@@ -118,15 +118,18 @@ try {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+  const rebateLoginPassword = `  smoke-${randomBytes(18).toString('base64url')}  `;
   const created = await request('/rebates', {
     accountId: '', accountEmail: 'standalone@outlook.com', siteName: 'EXE smoke',
     domain: 'rewards.example.com', registeredAt: '2026-11-02', offerName: 'EXE smoke offer',
     totalRevenue: 20.5, totalCost: 7.25, settled: false, settlementCycle: '', banned: false, ip: '',
+    loginPassword: rebateLoginPassword,
   });
   assert.equal(created.status, 201);
   const record = await created.json();
   assert.equal(record.accountUnknown, true);
   assert.equal(record.accountEmail, 'standalone@outlook.com');
+  assert.equal(record.loginPassword, rebateLoginPassword);
   const browserResponse = await request('/fingerprint-browsers', {
     serialNumber: '001', browserId: 'executable-smoke-browser', windowName: 'EXE smoke window',
     proxyInfo: '', accountIds: [record.accountId],
@@ -134,6 +137,12 @@ try {
   assert.equal(browserResponse.status, 201);
   const browser = await browserResponse.json();
   assert.equal(browser.accounts[0].rebates[0].id, record.id);
+  const browserOverview = await (await fetch(`${base}/api/fingerprint-browsers/overview`)).json();
+  assert.deepEqual(browserOverview.siteNames, ['EXE smoke']);
+  const overviewRow = browserOverview.rows.find((row) => row.id === browser.id);
+  assert.equal(overviewRow.serialNumber, '001');
+  assert.equal(overviewRow.sites[0].registrations[0].accountEmail, record.accountEmail);
+  assert.equal(overviewRow.sites[0].registrations[0].loginPassword, rebateLoginPassword);
   if (process.argv[3]) {
     const payload = { fileName: 'window-export.xlsx', content: (await readFile(resolve(process.argv[3]))).toString('base64') };
     const previewResponse = await request('/fingerprint-browsers/import-preview', payload);
@@ -166,6 +175,7 @@ try {
   assert.equal((await fetch(`${base}/api/does-not-exist`)).status, 404);
   assert.equal(output.includes(password), false);
   assert.equal(output.includes(key), false);
+  assert.equal(output.includes(rebateLoginPassword), false);
   const configBefore = await readFile(join(home, 'zohome.env'), 'utf8');
   assert.ok(configBefore.startsWith(initialConfig));
   await stop();
@@ -189,6 +199,7 @@ try {
   const restored = await (await fetch(`${base}/api/rebates`)).json();
   assert.equal(restored.total, 1);
   assert.equal(restored.records[0].id, record.id);
+  assert.equal(restored.records[0].loginPassword, rebateLoginPassword);
   await stop();
   assert.equal(await readFile(join(home, 'zohome.env'), 'utf8'), configBefore);
 
@@ -205,7 +216,7 @@ try {
   await stop();
   assert.deepEqual(await readdir(workingDirectory), []);
   console.log(
-    'Executable smoke passed: portable workspace independent of cwd, external database replacement/restoration and credentials preservation, explicit workspace override, embedded web + API, fingerprint browsers and optional Excel preview, folder selection, standalone rebate emails, settings, secret isolation, and stop/port release.',
+    'Executable smoke passed: portable workspace independent of cwd, external database replacement/restoration and password preservation, browser/site overview, credentials preservation, explicit workspace override, embedded web + API, fingerprint browsers and optional Excel preview, folder selection, standalone rebate emails, settings, secret isolation, and stop/port release.',
   );
 } finally {
   if (child?.pid && child.exitCode === null && child.signalCode === null) {

@@ -66,6 +66,11 @@ export class RebateDto implements RebateInput {
   @MaxLength(120)
   siteName!: string;
 
+  @ValidateIf((_record: RebateDto, value: unknown) => value !== undefined)
+  @IsString({ message: '返利网登录密码须为文本' })
+  @MaxLength(1000, { message: '返利网登录密码不能超过 1000 个字符' })
+  loginPassword?: string;
+
   @Transform(normalizeDomain)
   @IsFQDN({}, { message: '域名格式不正确，请填写 example.com 或完整网址' })
   @MaxLength(253)

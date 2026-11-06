@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AlertTriangle, ChevronLeft, ChevronRight, FileSpreadsheet, Pencil, Plus, RefreshCw, Search, Trash2, Upload } from 'lucide-react';
 import { api } from '../api';
 import { EmptyState, ErrorNotice, Modal, PageTitle, Spinner } from '../components/ui';
+import FingerprintBrowserOverview from '../components/FingerprintBrowserOverview';
 import { useWorkspace } from '../workspace';
 import type {
   FingerprintBrowserAccount,
@@ -235,6 +236,7 @@ export default function FingerprintBrowsersPage() {
           <button className="btn-primary" disabled={busy || previewing} onClick={() => openEditor()}><Plus size={15} />新增指纹浏览器</button>
         </div>
       } />
+      <FingerprintBrowserOverview revision={revision} />
       <div className="panel overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-5 py-4">
           <div className="search-field w-full sm:max-w-sm"><Search size={15} /><input aria-label="搜索指纹浏览器" placeholder="搜索序号、ID、窗口名称、代理或邮箱…" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /></div>

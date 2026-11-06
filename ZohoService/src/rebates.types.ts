@@ -3,6 +3,7 @@ export interface RebateInput {
   accountEmail?: string;
   fingerprintBrowserId?: string;
   siteName: string;
+  loginPassword?: string;
   domain: string;
   registeredAt: string;
   offerName: string;
@@ -16,6 +17,7 @@ export interface RebateInput {
 
 export interface RebateRecord extends RebateInput {
   id: string;
+  loginPassword: string;
   accountEmail: string;
   accountUnknown: boolean;
   accountName: string;

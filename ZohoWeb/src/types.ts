@@ -86,6 +86,7 @@ export interface RebateInput {
   fingerprintBrowserId?: string;
   accountEmail?: string;
   siteName: string;
+  loginPassword?: string;
   domain: string;
   registeredAt: string;
   offerName: string;
@@ -127,6 +128,7 @@ export interface RebateCostRefresh {
 
 export interface RebateRecord extends RebateInput {
   id: string;
+  loginPassword: string;
   fingerprintBrowserId: string;
   fingerprintBrowserExternalId: string;
   fingerprintBrowserSerialNumber: string;
@@ -223,4 +225,29 @@ export interface FingerprintBrowserImportResult {
   imported: number;
   removed: number;
   unlinkedRebates: number;
+}
+
+export interface FingerprintBrowserOverviewRegistration {
+  id: string;
+  accountEmail: string;
+  loginPassword: string;
+  banned: boolean;
+  domain: string;
+  offerName: string;
+}
+
+export interface FingerprintBrowserOverviewRow {
+  id: string;
+  browserId: string;
+  serialNumber: string;
+  windowName: string;
+  sites: Array<{
+    siteName: string;
+    registrations: FingerprintBrowserOverviewRegistration[];
+  }>;
+}
+
+export interface FingerprintBrowserOverview {
+  siteNames: string[];
+  rows: FingerprintBrowserOverviewRow[];
 }

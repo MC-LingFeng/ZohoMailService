@@ -53,3 +53,25 @@ export interface FingerprintBrowserImportResult {
   removed: number;
   unlinkedRebates: number;
 }
+
+export interface FingerprintBrowserOverviewRegistration {
+  id: string;
+  accountEmail: string;
+  loginPassword: string;
+  banned: boolean;
+  domain: string;
+  offerName: string;
+}
+
+export interface FingerprintBrowserOverviewRow {
+  id: string;
+  browserId: string;
+  serialNumber: string;
+  windowName: string;
+  sites: Array<{ siteName: string; registrations: FingerprintBrowserOverviewRegistration[] }>;
+}
+
+export interface FingerprintBrowserOverview {
+  siteNames: string[];
+  rows: FingerprintBrowserOverviewRow[];
+}

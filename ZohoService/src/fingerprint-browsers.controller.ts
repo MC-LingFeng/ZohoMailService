@@ -17,6 +17,11 @@ export class FingerprintBrowsersController {
     return this.store.fingerprintBrowserOptions();
   }
 
+  @Get('overview')
+  overview() {
+    return this.store.fingerprintBrowserOverview();
+  }
+
   @Post()
   create(@Body() dto: FingerprintBrowserDto) {
     return this.store.createFingerprintBrowser(dto);

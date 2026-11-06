@@ -11,6 +11,8 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
   Pencil,
   Plus,
   RefreshCw,
@@ -37,6 +39,7 @@ import type {
   RebateRecord,
 } from '../types';
 import { useWorkspace } from '../workspace';
+import PasswordValue from '../components/PasswordValue';
 
 const RebateOverview = lazy(() => import('../components/RebateOverview'));
 
@@ -413,10 +416,49 @@ interface EditorFields extends Omit<RebateInput, 'totalRevenue' | 'totalCost'> {
   totalRevenue: string;
   totalCost: string;
 }
+
+function LoginPasswordField({ value, onChange, disabled }: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  const id = useId();
+  const [visible, setVisible] = useState(false);
+  return (
+    <div>
+      <label className="field-label" htmlFor={id}>返利网登录密码（选填）</label>
+      <div className="relative">
+        <input
+          id={id}
+          className="input pr-12"
+          type={visible ? 'text' : 'password'}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          maxLength={1000}
+          autoComplete="new-password"
+          placeholder="填写返利网登录密码，可留空"
+          disabled={disabled}
+        />
+        <button
+          type="button"
+          className="icon-button absolute right-1 top-1/2 -translate-y-1/2"
+          aria-label={visible ? '隐藏登录密码' : '显示登录密码'}
+          aria-pressed={visible}
+          disabled={disabled}
+          onClick={() => setVisible((current) => !current)}
+        >
+          {visible ? <EyeOff size={15} /> : <Eye size={15} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const blankFields = (accountId: string, accountEmail = ''): EditorFields => ({
   accountId,
   accountEmail,
   siteName: '',
+  loginPassword: '',
   domain: '',
   registeredAt: localDate(),
   offerName: '',
@@ -574,6 +616,7 @@ export default function RebatesPage() {
             accountId: record.accountUnknown ? '' : record.accountId,
             accountEmail: record.accountEmail,
             siteName: record.siteName,
+            loginPassword: record.loginPassword || '',
             domain: record.domain,
             registeredAt: record.registeredAt,
             offerName: record.offerName,
@@ -929,9 +972,9 @@ export default function RebatesPage() {
               role="region"
               aria-label="返利网注册明细表，可左右滚动"
             >
-              <table className="w-full min-w-[1920px] text-left text-[11px]">
+              <table className="w-full min-w-[2080px] text-left text-[11px]">
                 <caption className="sr-only">
-                  各邮箱关联的指纹浏览器 ID、序号及注册的返利网、Offer、收支、结款、封户和 IP 信息
+                  各邮箱关联的指纹浏览器 ID、序号及注册的返利网、登录密码、Offer、收支、结款、封户和 IP 信息
                 </caption>
                 <thead className="bg-surface-muted text-[10px] font-medium text-muted">
                   <tr>
@@ -940,6 +983,7 @@ export default function RebatesPage() {
                       'ID',
                       '序号',
                       '返利网 / 域名',
+                      '密码',
                       '创建时间',
                       'Offer 名称',
                       '总收益',
@@ -992,6 +1036,9 @@ export default function RebatesPage() {
                         <p className="mt-1 max-w-52 break-all text-muted">
                           {record.domain}
                         </p>
+                      </td>
+                      <td className="min-w-40 max-w-56 px-4 py-4">
+                        <PasswordValue value={record.loginPassword} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 tabular-nums text-body">
                         {record.registeredAt}
@@ -1206,6 +1253,12 @@ export default function RebatesPage() {
                 placeholder="例如：example.com"
                 maxLength={253}
                 required
+                disabled={busy}
+              />
+              <LoginPasswordField
+                key={`password-${editorEpoch}`}
+                value={fields.loginPassword || ''}
+                onChange={(value) => setField('loginPassword', value)}
                 disabled={busy}
               />
               <label>

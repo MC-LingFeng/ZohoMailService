@@ -21,6 +21,7 @@ import {
 } from './dto';
 import { MailService } from './mail.service';
 import { SessionService } from './security';
+import { WorkspaceContext } from './workspace-context';
 
 @Controller()
 export class AppController {
@@ -28,6 +29,7 @@ export class AppController {
     private readonly config: AppConfig,
     private readonly sessions: SessionService,
     private readonly mail: MailService,
+    private readonly workspaceContext: WorkspaceContext,
   ) {}
   @Get('status') status(@Req() req: Request) {
     return {
@@ -35,6 +37,7 @@ export class AppController {
       mode: this.config.mode,
       oauthConfigured: this.config.oauthConfigured,
       authenticated: this.sessions.authenticated(req),
+      user: this.sessions.user(req),
       manualCredentialsSupported: true,
     };
   }
@@ -43,7 +46,7 @@ export class AppController {
     @Res({ passthrough: true }) res: Response,
     @Body() dto: LoginDto,
   ) {
-    return this.sessions.login(req, res, dto.password);
+    return this.sessions.login(req, res, dto.password, dto.username);
   }
   @Delete('session') logout(
     @Req() req: Request,
@@ -132,7 +135,7 @@ export class AppController {
       result = `error=${encodeURIComponent(message)}`;
     }
     res.redirect(
-      `${this.config.frontendUrl.replace(/\/$/, '')}/accounts?${result}`,
+      `${this.config.frontendUrl.replace(/\/$/, '')}/accounts?${result}${this.workspaceContext.current()?.workspaceId ? `&workspaceId=${encodeURIComponent(this.workspaceContext.current()!.workspaceId!)}` : ''}`,
     );
   }
   @Get('auth/outlook/callback') async outlookCallback(
@@ -149,6 +152,6 @@ export class AppController {
       const message = error instanceof Error ? error.message : 'Outlook 邮箱连接失败，请重试';
       result = `error=${encodeURIComponent(message)}`;
     }
-    res.redirect(`${this.config.frontendUrl.replace(/\/$/, '')}/accounts?provider=outlook&${result}`);
+    res.redirect(`${this.config.frontendUrl.replace(/\/$/, '')}/accounts?provider=outlook&${result}${this.workspaceContext.current()?.workspaceId ? `&workspaceId=${encodeURIComponent(this.workspaceContext.current()!.workspaceId!)}` : ''}`);
   }
 }

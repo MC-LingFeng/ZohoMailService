@@ -15,7 +15,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, dateLabel } from '../api';
+import { dateLabel } from '../api';
 import {
   Avatar,
   EmptyState,
@@ -32,7 +32,7 @@ const hasSavedCredentials = (account?: Account | null) =>
 const providerNames = { zoho: 'Zoho', outlook: 'Microsoft Outlook' };
 
 export default function AccountsPage() {
-  const { accounts, status, loading, refresh, toast } = useWorkspace();
+  const { accounts, status, loading, refresh, toast, request: api } = useWorkspace();
   const [search, setSearch] = useState('');
   const [group, setGroup] = useState('全部分组');
   const [page, setPage] = useState(0);

@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { AppConfig } from '../src/config';
 import { encryptToken, decryptToken } from '../src/security';
 import { MailStore } from '../src/store';
+import { PlatformStore } from '../src/platform-store';
 
 test(
   'production main reads an external env file and existing data, serves the web app, and closes on SIGTERM',
@@ -194,7 +195,16 @@ test(
       assert.equal(existsSync(join(root, 'wrong-data-do-not-use')), false);
       assert.equal(output.includes(password), false);
       assert.equal(output.includes(key), false);
-      const reopened = new MailStore(config);
+      const original = new MailStore(config);
+      try {
+        // The old database remains an untouched rollback source after upgrade.
+        assert.deepEqual(original.account(before.id), before);
+      } finally { original.onModuleDestroy(); }
+      const platform = new PlatformStore(config);
+      const workspace = platform.workspaceConfig(platform.defaultWorkspaceId);
+      const reopened = new MailStore(Object.assign(Object.create(config) as AppConfig, {
+        dataDir: workspace.dataDir, encryptionKey: workspace.encryptionKey,
+      }));
       try {
         const after = reopened.account(before.id)!;
         assert.equal(after.name, 'Updated in mounted database');
@@ -206,6 +216,7 @@ test(
         );
       } finally {
         reopened.onModuleDestroy();
+        platform.onModuleDestroy();
       }
     } finally {
       if (child.exitCode === null && child.signalCode === null) {

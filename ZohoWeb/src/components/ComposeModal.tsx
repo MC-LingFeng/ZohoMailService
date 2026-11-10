@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowLeft, Send, ShieldCheck } from 'lucide-react';
-import { api } from '../api';
 import { useWorkspace } from '../workspace';
 import { ErrorNotice, Modal } from './ui';
 
@@ -13,7 +12,7 @@ export default function ComposeModal({
   onClose: () => void;
   initialAccountId?: string;
 }) {
-  const { accounts, status, toast, refresh } = useWorkspace();
+  const { accounts, status, toast, refresh, request: api } = useWorkspace();
   const [accountId, setAccountId] = useState('');
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');

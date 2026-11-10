@@ -35,6 +35,10 @@ export class AppConfig {
     process.env.ADS_CREDENTIALS_FILE || 'credentials.json',
   );
   readonly adsApiVersion = process.env.ADS_API_VERSION || 'v26';
+  // Workspace credentials live encrypted in the platform catalog, never in a
+  // caller-controlled filesystem path. The legacy file is retained on migration.
+  readonly adsCredentialsJson = '';
+  readonly seedDemoData: boolean = true;
   readonly minInterval = Math.max(
     2100,
     Number(process.env.ZOHO_MIN_REQUEST_INTERVAL_MS || 2100) || 2100,

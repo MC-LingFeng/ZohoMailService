@@ -34,7 +34,7 @@ const keyTitles: Record<string, string> = {
   FRONTEND_URL: '网页地址', ZOHO_REDIRECT_URI: '授权回调地址',
   OUTLOOK_REDIRECT_URI: 'Outlook 授权回调地址', OUTLOOK_TENANT: 'Microsoft 账户类型或租户',
   ZOHO_CLIENT_ID: '应用编号', ZOHO_CLIENT_SECRET: '应用密钥',
-  APP_PASSWORD: '工作区密码', TOKEN_ENCRYPTION_KEY: '令牌加密密钥',
+  APP_PASSWORD: '初始管理员密码（仅首次启动使用）', TOKEN_ENCRYPTION_KEY: '平台加密主密钥',
   DATA_DIR: '数据目录', ZOHO_MIN_REQUEST_INTERVAL_MS: '请求间隔（毫秒）',
   ADS_MANAGER_ACCOUNT: 'Google Ads 经理号',
   ADS_CREDENTIALS_FILE: 'Google Ads 服务账号密钥文件', ADS_API_VERSION: 'Google Ads API 版本',
@@ -64,6 +64,7 @@ export interface SettingsDocument {
 export class SettingsService {
   private filePath: string;
   private desktop = false;
+  private platformMode = false;
   private baseline?: string;
 
   constructor(private readonly config: AppConfig) {
@@ -76,6 +77,8 @@ export class SettingsService {
     this.desktop = desktop;
     this.captureBaseline();
   }
+
+  enablePlatformMode() { this.platformMode = true; }
 
   private captureBaseline() {
     try { this.baseline = valuesRevision(readFileSync(this.filePath, 'utf8')); }
@@ -98,6 +101,10 @@ export class SettingsService {
   }
 
   private lockedReason(key: string, value: string): string | undefined {
+    if (this.platformMode && key === 'APP_PASSWORD')
+      return '账号密码已保存在平台账号库中，请使用修改登录密码功能；此项只用于首次初始化管理员';
+    if (this.platformMode && ['ZOHO_CLIENT_ID', 'ZOHO_CLIENT_SECRET', 'OUTLOOK_TENANT', 'ZOHO_MIN_REQUEST_INTERVAL_MS', 'ADS_MANAGER_ACCOUNT', 'ADS_CREDENTIALS_FILE', 'ADS_API_VERSION'].includes(key))
+      return '此项已按工作空间独立保存，请在工作空间设置中修改';
     if (key === 'TOKEN_ENCRYPTION_KEY' && /^[a-f\d]{64}$/i.test(value))
       return '已有加密密钥需保持不变，以免已保存的邮箱授权无法解密';
     if (this.desktop && key === 'HOST') return '桌面版仅监听本机地址';

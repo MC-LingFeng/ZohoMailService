@@ -13,6 +13,8 @@ import {
 import type { Folder } from './types';
 
 export class LoginDto {
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+  @IsOptional() @IsString() @MaxLength(80) username?: string;
   @IsString() @MaxLength(256) password!: string;
 }
 export class BindAccountDto {

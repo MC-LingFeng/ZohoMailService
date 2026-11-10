@@ -143,7 +143,7 @@ export class MailStore implements OnModuleDestroy {
           'INSERT OR IGNORE INTO daily_stats(day,sent_count) VALUES(?,?)',
         )
         .run(day, count);
-    if (!config.live && !this.accounts().length) this.seed();
+    if (!config.live && config.seedDemoData !== false && !this.accounts().length) this.seed();
   }
   onModuleDestroy() {
     this.db.close();

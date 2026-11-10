@@ -19,7 +19,6 @@ import {
   Search,
   Trash2,
 } from 'lucide-react';
-import { api } from '../api';
 import { Link } from 'react-router-dom';
 import { formatConversion, formatConversionApprox } from '../rebates';
 import {
@@ -472,7 +471,7 @@ const blankFields = (accountId: string, accountEmail = ''): EditorFields => ({
 });
 
 export default function RebatesPage() {
-  const { accounts, toast } = useWorkspace();
+  const { accounts, toast, request: api } = useWorkspace();
   const [filters, setFilters] = useState({
     search: '',
     accountId: '',

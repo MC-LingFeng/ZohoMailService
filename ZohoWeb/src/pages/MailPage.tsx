@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, dateLabel } from '../api';
+import { dateLabel } from '../api';
 import {
   Avatar,
   EmptyState,
@@ -38,7 +38,7 @@ const folderIcons = { inbox: Inbox, spam: ShieldAlert, sent: Send, other: Folder
 const LIMIT = 30;
 
 export default function MailPage() {
-  const { accounts, loading: accountsLoading, refresh, toast } = useWorkspace();
+  const { accounts, loading: accountsLoading, refresh, toast, request: api } = useWorkspace();
   const [params, setParams] = useSearchParams();
   const requestedId = params.get('account');
   const selectedId =

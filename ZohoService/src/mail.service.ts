@@ -332,7 +332,7 @@ export class MailService {
     encryptedClientSecret: string,
     accountId?: string,
   ) {
-    const state = this.sessions.createState(req);
+    const state = this.sessions.createState(req, 'zoho');
     this.store.saveBinding({
       stateHash: createHash('sha256').update(state).digest('hex'),
       provider: 'zoho',

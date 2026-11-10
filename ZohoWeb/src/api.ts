@@ -1,22 +1,28 @@
 export class ApiError extends Error {
+  public status: number;
   constructor(
     message: string,
-    public status: number,
+    status: number,
   ) {
     super(message);
+    this.status = status;
   }
 }
 
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+export type ApiRequest = <T>(path: string, init?: RequestInit) => Promise<T>;
+
+async function request<T>(path: string, init: RequestInit, workspaceId?: string): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  if (workspaceId) headers.set('X-Workspace-Id', workspaceId);
+  init.signal?.throwIfAborted();
   const response = await fetch(`/api${path}`, {
     ...init,
     credentials: 'same-origin',
-    headers: {
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...init.headers,
-    },
+    headers,
   });
   const body = await response.json().catch(() => ({}));
+  init.signal?.throwIfAborted();
   if (!response.ok) {
     if (response.status === 401)
       window.dispatchEvent(new Event('zohome:unauthorized'));
@@ -26,6 +32,16 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(message || '请求未完成，请稍后重试。', response.status);
   }
   return body as T;
+}
+
+export const api: ApiRequest = (path, init = {}) => request(path, init);
+
+export function createWorkspaceApi(workspaceId: string, lifetime: AbortSignal | (() => AbortSignal)): ApiRequest {
+  return async (path, init = {}) => {
+    const workspaceSignal = typeof lifetime === 'function' ? lifetime() : lifetime;
+    const signal = init.signal ? AbortSignal.any([workspaceSignal, init.signal]) : workspaceSignal;
+    return request(path, { ...init, signal }, workspaceId);
+  };
 }
 
 export function dateLabel(value: string | null, includeTime = false) {

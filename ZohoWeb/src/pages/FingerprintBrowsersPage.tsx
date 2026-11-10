@@ -1,7 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, ChevronLeft, ChevronRight, FileSpreadsheet, Pencil, Plus, RefreshCw, Search, Trash2, Upload } from 'lucide-react';
-import { api } from '../api';
 import { EmptyState, ErrorNotice, Modal, PageTitle, Spinner } from '../components/ui';
 import FingerprintBrowserOverview from '../components/FingerprintBrowserOverview';
 import { useWorkspace } from '../workspace';
@@ -80,7 +79,7 @@ async function fileContent(file: File) {
 }
 
 export default function FingerprintBrowsersPage() {
-  const { toast } = useWorkspace();
+  const { toast, request: api } = useWorkspace();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);

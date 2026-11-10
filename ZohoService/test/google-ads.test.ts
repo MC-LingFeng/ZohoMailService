@@ -141,7 +141,7 @@ test('Ads rejects invalid local configuration before contacting Google and keeps
     Object.assign(f.config, { adsApiVersion: 'v26' });
     writeFileSync(f.config.adsCredentialsFile, 'PRIVATE KEY malformed content');
     await assert.rejects(f.client.campaignCosts(), (error: Error) => {
-      assert.match(error.message, /credentials\.json/);
+      assert.match(error.message, /工作空间设置|ADS_CREDENTIALS_FILE/);
       assert.doesNotMatch(error.message, /PRIVATE KEY malformed content/);
       return true;
     });

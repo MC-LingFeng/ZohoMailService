@@ -11,6 +11,31 @@ export interface AppStatus {
   oauthConfigured: boolean;
   manualCredentialsSupported?: boolean;
   authenticated: boolean;
+  user: SessionUser | null;
+  defaultWorkspaceId?: string;
+}
+
+export interface SessionUser {
+  id: string;
+  username: string;
+  isPlatformAdmin: boolean;
+}
+
+export interface WorkspaceSummary {
+  id: string;
+  name: string;
+  role: 'owner' | 'member';
+}
+
+export interface WorkspaceCatalog {
+  workspaces: WorkspaceSummary[];
+  defaultWorkspaceId: string;
+}
+
+export interface WorkspaceMember {
+  userId: string;
+  username: string;
+  role: 'owner' | 'member';
 }
 
 export interface SettingsField {

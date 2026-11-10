@@ -2,6 +2,8 @@
 
 多个邮箱，一个工作空间。ZoHome 提供系统介绍首页、邮件工作台、邮箱账号和使用指南，支持在同一个界面切换 Zoho 与 Microsoft Outlook 邮箱，查看收件箱与垃圾邮件，并选择账号发送邮件。
 
+多账号登录、工作区切换、独立配置、旧数据升级和完整备份方式见 [多账号与工作区](docs/multi-workspace.md)。
+
 绑定邮箱时可选择 Zoho 或 Outlook。Outlook 使用 Microsoft Graph 和微软网页登录授权，支持个人 Outlook/Hotmail 邮箱及具有 Exchange Online 邮箱的 Microsoft 365 账号，应用凭据与离线令牌按邮箱加密保存。配置 Microsoft 应用及回调地址后即可连接，详见 [Outlook 接入说明](docs/outlook.md)。已有 Zoho 账号及其返利网数据继续使用。
 
 前端位于 `ZohoWeb`，使用 React、Vite、TypeScript 和 Tailwind CSS；后端位于 `ZohoService`，使用 NestJS、TypeScript 和 SQLite。界面样式由统一的 Tailwind 主题和全局公共类管理。
@@ -14,13 +16,13 @@ Zoho 的邮件标签根据账号实际文件夹动态显示，通知（Notificat
 
 新增返利网时也可直接输入尚未绑定的邮箱地址，保存后标为「未知」。此类地址只存在于返利网记录及其筛选、统计和成本分摊中，不会加入「邮箱账号」、邮件工作台或首页邮箱统计，也不需要先完成邮箱授权。同一地址忽略首尾空格和大小写后复用；之后绑定同名邮箱不会自动改动既有记录，需要在编辑记录时明确选择已绑定邮箱。删除已绑定邮箱仍会清理其关联记录，独立的「未知」记录不受影响。
 
-返利网记录可选填该网站的登录密码，新增、编辑表单及明细表均支持显示或隐藏密码。编辑时会带出原密码，清空后保存可删除密码；密码中的首尾空格会原样保留。真实模式及已配置有效 `TOKEN_ENCRYPTION_KEY` 的工作区使用该密钥加密保存，未配置有效密钥的演示环境以明文保存。迁移数据库时须保留对应密钥。
+返利网记录可选填该网站的登录密码，新增、编辑表单及明细表均支持显示或隐藏密码。编辑时会带出原密码，清空后保存可删除密码；密码中的首尾空格会原样保留。工作区使用独立保存的密钥加密新写入的密码，升级保留旧记录及其原密钥。备份时须一起保留平台目录库、工作区数据库和原 `TOKEN_ENCRYPTION_KEY`。
 
 「指纹浏览器」页面位于 `/fingerprint-browsers`，支持新增、编辑、删除、搜索和分页，保存序号、ID、窗口名称、代理信息及关联邮箱。邮箱选项与返利网页面共用，包含「未知」邮箱；将鼠标放在关联邮箱上，或用键盘聚焦邮箱，可查看该邮箱的 Offer 和返利网信息。返利网表格新增 ID、序号两列；新增或编辑返利记录时，两项均可留空，也可从指纹浏览器下拉列表中选择。选择 ID 或序号会同步对应项，不能任意输入，保存后即建立关联。
 
 指纹浏览器支持导入 `.xlsx`，文件不超过 5 MB、数据不超过 10000 行。兼容窗口导出模板中的「序号、ID、窗口名称、代理信息」列，按列名读取，跳过模板说明行和「国家代码表」工作表。导入先显示预览，并明确提示全部替换；勾选确认后，再点击「确认导入并全部替换」才会写入。相同 ID 的浏览器保留原关联，文件中消失的浏览器只解除关联，保留返利网记录；校验失败不会修改原数据。
 
-指纹浏览器和关联关系保存在当前 `demo` 或 `live` 模式使用的 SQLite 数据库中，启动时自动升级已有数据库，无需配置额外数据库。
+指纹浏览器和关联关系保存在当前工作区的 `DATA_DIR/workspaces/<UUID>/<mode>.sqlite` 中，启动时自动升级已有数据库，无需配置额外数据库。
 
 指纹浏览器页面顶部提供返利网热力总览：以「窗口序号-ID」为行、返利网为列，色块显示返利网名称，绿色表示正常、红色表示已封户，中性色表示无关联账号。每条登记独立显示为一个色块，同一浏览器、返利网下的多个 Offer 均保留。悬浮可查看 Offer、邮箱和密码，点击可固定详情，并支持分别复制邮箱、密码或一起复制。网站列根据可用宽度自动分组，内容完整展开，无内部滚动条。总览读取全部记录，不受下方管理列表搜索和分页影响，支持独立搜索（含 Offer）及刷新。已指定浏览器的返利记录只展示在指定浏览器下；未指定浏览器的记录按手动关联邮箱匹配。
 
@@ -28,13 +30,13 @@ Zoho 的邮件标签根据账号实际文件夹动态显示，通知（Notificat
 
 「新增记录」旁的「刷新预算」可手动读取 Google Ads 经理号下全部广告账户的累计消费，按广告系列名称精确匹配 Offer，覆盖保存美元成本。同名系列先汇总，再按关联邮箱均分；同邮箱同 Offer 有多条记录时继续均分，合计保持一致。刷新包含全部记录，不受当前筛选和分页限制；未匹配及非 USD 数据保留原成本并提示。配置服务账号 JSON、经理号和 Google Cloud 项目 API 访问权限后即可使用，详见 [Google Ads 成本刷新](docs/google-ads.md)。Docker 使用文档中的可选密钥挂载配置，密钥不进入镜像。
 
-「系统设置」页面位于 `/settings`，自动读取应用当前使用的 `.env`（桌面版为 `zohome.env`），以配置项对应的注释作为字段标题。保存时保留注释、顺序和其他配置，修改后重启应用生效。密码和密钥只显示是否已配置，留空会保留原值；已有邮箱授权使用的加密密钥应保持不变。项目根目录的 `.env` 属于 Docker Compose 参数，仍在文件中维护。
+「系统设置」页面位于 `/settings`，默认管理当前工作区的连接与同步配置，所有者保存后生效。平台管理员还可切换到「平台设置」，维护应用使用的 `.env`（桌面版为 `zohome.env`）；平台配置保存时保留注释、顺序和其他配置，修改后重启应用生效。平台页的 `APP_PASSWORD` 仅用于首次初始化管理员，旧工作区连接字段也为只读：登录密码在「账号密码」中修改，连接字段在工作区设置中修改。密码和密钥只显示是否已配置，留空保留原值；原平台加密密钥须保持不变。项目根目录的 `.env` 属于 Docker Compose 参数，仍在文件中维护。
 
 ## Windows EXE 启动
 
 Windows x64 用户可以双击 `ZoHome-win-x64.exe` 启动，无需安装 Node.js 或 npm。程序在同一个进程中提供网页和 API，自动打开 <http://localhost:3001>，并保留一个控制台窗口。按 **Ctrl+C** 或关闭该控制台窗口即可停止整个应用；只关闭浏览器标签页不会停止服务。
 
-EXE 默认使用自身所在目录作为工作区，首次运行会创建 `zohome.env`，默认使用演示模式，并自动生成工作区密码和令牌加密密钥。数据库放在同目录的 `./data` 中，Google Ads 服务账号密钥由用户放在同目录的 `credentials.json`，均独立于 EXE，方便备份和替换。路径不受启动终端所在目录影响，也可通过 `ZOHOME_HOME` 指定其他工作区。
+EXE 默认使用自身所在目录作为应用目录，首次运行会创建 `zohome.env`，默认使用演示模式，并自动生成初始管理员密码和平台加密密钥。平台目录库和各工作区数据库保存在同目录的 `./data` 中，均独立于 EXE；Google Ads 凭证在当前工作区设置中保存，旧版外部 `credentials.json` 保留兼容。路径不受启动终端所在目录影响，也可通过 `ZOHOME_HOME` 指定其他应用目录。
 
 ```text
 ZoHome/
@@ -44,9 +46,9 @@ ZoHome/
 └── credentials.json     # 使用 Google Ads 时自行放入
 ```
 
-替换数据库或密钥文件前先关闭程序并备份；数据库必须与原有 `TOKEN_ENCRYPTION_KEY` 配套。升级只需替换 EXE，保留旁边的配置和数据。旧版 `%LOCALAPPDATA%\ZoHome` 工作区不会自动迁移，需将其中的 `zohome.env`、整个 `data` 和 `credentials.json`（如有）复制到 EXE 旁，或用 `ZOHOME_HOME` 继续指定旧工作区。EXE 不包含开发机的配置、数据库或密钥。
+升级前先关闭旧程序并备份原配置和整个 `data`，再替换 EXE；首次新版启动会自动将旧数据库接入默认工作区并保留原库及迁移快照。之后实际数据位于 `data/workspaces/<UUID>/<mode>.sqlite`，顶层旧 `live.sqlite` 或 `demo.sqlite` 不再是活动库。恢复须使用配套的平台目录库、完整数据目录和原 `TOKEN_ENCRYPTION_KEY`，不能只替换顶层旧文件。旧版 `%LOCALAPPDATA%\ZoHome` 应用目录不会自动搬到 EXE 旁，需先停止旧程序，再复制其中的 `zohome.env`、整个 `data` 和 `credentials.json`（如有），或用 `ZOHOME_HOME` 继续指定原目录。EXE 不包含开发机的配置、数据库或密钥。
 
-要接入真实邮箱，可在「系统设置」中将运行模式改为真实邮箱并保存，然后关闭程序、重新运行；也可关闭程序后，在 `zohome.env` 中把 `APP_MODE` 改为 `live`。登录密码使用文件中的 `APP_PASSWORD`，邮箱应用凭据仍在「邮箱账号」页面填写。**EXE 的 Zoho 授权回调是 `http://localhost:3001/api/auth/zoho/callback`，与开发环境的 5173 端口不同。**
+要接入真实邮箱，平台管理员可在「系统设置 → 平台设置」中将运行模式改为真实邮箱并保存，然后关闭程序、重新运行；也可关闭程序后，在 `zohome.env` 中把 `APP_MODE` 改为 `live`。首次真实模式登录使用用户名 `admin` 与原 `APP_PASSWORD`；以后使用平台账号当前密码，邮箱应用凭据仍在「邮箱账号」页面填写。**EXE 的 Zoho 授权回调是 `http://localhost:3001/api/auth/zoho/callback`，与开发环境的 5173 端口不同。**
 
 在源码仓库构建 Windows EXE：
 
@@ -112,7 +114,7 @@ npm run dev
 
 ```dotenv
 APP_MODE=live
-APP_PASSWORD=请设置至少12个字符的工作区密码
+APP_PASSWORD=请设置至少12个字符的初始管理员密码
 TOKEN_ENCRYPTION_KEY=请替换为64个十六进制字符的随机密钥
 FRONTEND_URL=http://localhost:5173
 ZOHO_REDIRECT_URI=http://localhost:5173/api/auth/zoho/callback
@@ -124,10 +126,10 @@ ZOHO_REDIRECT_URI=http://localhost:5173/api/auth/zoho/callback
 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 ```
 
-这些值属于工作区和服务端配置。**新绑定的 Zoho Client ID 和 Client Secret 在页面上按邮箱填写，不需要设置全局应用凭据。**
+这些值属于平台启动配置；`APP_PASSWORD` 仅初始化管理员，后续密码在「系统设置 → 账号密码」中修改。**新绑定的 Zoho Client ID 和 Client Secret 在页面上按邮箱填写，不需要设置全局应用凭据。**
 
 1. 在 [Zoho API Console](https://api-console.zoho.com/) 创建 **Server-based Application**，取得 Client ID 和 Client Secret。将授权回调登记为 `http://localhost:5173/api/auth/zoho/callback`，与服务端配置完全一致。
-2. 重启服务，用工作区密码进入 ZoHome。在「邮箱账号」点击「添加邮箱」，手动填写目标邮箱地址、Client ID 和 Client Secret。
+2. 重启服务，用平台账号进入 ZoHome，选择目标工作区。首次登录使用 `admin` 与原 `APP_PASSWORD`。在「邮箱账号」点击「添加邮箱」，手动填写目标邮箱地址、Client ID 和 Client Secret。
 3. 表单通过 `POST /api/auth/zoho/url` 提交。服务端将待授权配置保存到数据库，其中 Client Secret 加密保存；记录有效期为 10 分钟，并返回 Zoho 官方授权地址。
 4. 在 Zoho 官方页面登录并授权。**登录邮箱必须与表单中填写的地址匹配**；若当前浏览器登录了其他账号，ZoHome 会拒绝绑定并给出提示。
 5. 授权成功后，应用配置和授权令牌与邮箱关联保存。以后切换邮箱会复用有效授权；需要重新授权时，直接使用对应账号的入口，无需重新填写应用凭据。
@@ -141,18 +143,18 @@ ZoHome 不收集邮箱登录密码，邮箱登录及同意授权始终在 Zoho �
 | 变量                                    | 说明                                                |
 | --------------------------------------- | --------------------------------------------------- |
 | `APP_MODE`                              | 默认 `demo`；真实邮箱使用 `live`                    |
-| `APP_PASSWORD`                          | 真实模式的工作区登录密码，至少 12 个字符            |
+| `APP_PASSWORD`                          | 初始管理员密码，仅首次初始化使用，至少 12 个字符   |
 | `TOKEN_ENCRYPTION_KEY`                  | 真实模式必填，64 个十六进制字符，须保持稳定         |
 | `ZOHO_REDIRECT_URI`                     | 默认 `http://localhost:5173/api/auth/zoho/callback` |
 | `FRONTEND_URL`                          | 默认 `http://localhost:5173`                        |
 | `HOST` / `PORT`                         | 默认 `127.0.0.1` / `3001`                           |
-| `DATA_DIR`                              | 默认 `./data`，演示与真实模式使用各自的数据库       |
-| `ZOHO_MIN_REQUEST_INTERVAL_MS`          | 默认 `2100`，保守控制对 Zoho 的请求间隔             |
-| `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` | 可选，仅兼容旧记录；新绑定使用表单提交的邮箱级配置  |
+| `DATA_DIR`                              | 默认 `./data`，包含平台目录库和工作区数据库子目录   |
+| `ZOHO_MIN_REQUEST_INTERVAL_MS`          | 默认 `2100`；初始化后在工作区设置中修改            |
+| `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` | 初始化兼容旧记录；后续在工作区设置或绑定表单中填写 |
 
 每个账号在数据库中关联邮箱地址、Client ID、加密的 Client Secret 和加密的 Refresh Token。待授权表单中的凭据仅用于当前绑定流程，不回传给页面，也不保存到浏览器持久化存储。不要把 Client Secret、令牌加密密钥或 Refresh Token 写入前端环境变量、日志或版本库。
 
-演示和真实模式的数据分别保存在 `ZohoService/data/demo.sqlite` 与 `ZohoService/data/live.sqlite`。`.env` 与 SQLite 运行数据已加入忽略列表。更换加密密钥后，旧密钥加密的授权和应用凭据无法解密；请将数据库与对应密钥分别安全备份。
+演示和真实模式分别使用 `DATA_DIR/platform-demo.sqlite`、`DATA_DIR/platform-live.sqlite` 平台目录库；业务数据保存在 `DATA_DIR/workspaces/<UUID>/demo.sqlite` 或 `live.sqlite`。旧版顶层模式数据库在首次升级后只作为原数据保留。`.env` 与 SQLite 运行数据已加入忽略列表；停机备份时须一起保存完整数据目录和对应的原平台加密密钥，详见 [多账号与工作区](docs/multi-workspace.md)。
 
 当前目标是国际站 `mail.zoho.com`。免费账号的实际 API 权限应以真实账号测试结果为准，首轮建议先接入 3–5 个账号，验证收件箱、垃圾邮件、发信与授权续期，再扩大接入范围。
 

@@ -11,6 +11,7 @@ import { OutlookClient } from '../src/outlook';
 import { MailStore } from '../src/store';
 import { decryptToken, encryptToken } from '../src/security';
 import { ZohoClient } from '../src/zoho';
+import { PlatformStore } from '../src/platform-store';
 import { Account, MailDetail, MailMessage, StoredAccount } from '../src/types';
 
 const encryptionKey = 'ab'.repeat(32);
@@ -76,7 +77,8 @@ test('Outlook binding uses PKCE, encrypts application credentials, exposes provi
     assert.equal(url.searchParams.get('redirect_uri'), 'http://localhost:5173/api/auth/outlook/callback');
     assert.ok(url.searchParams.get('scope')!.includes('offline_access'));
     assert.equal(url.toString().includes(binding.clientSecret), false);
-    const inspection = new DatabaseSync(join(h.dir, 'live.sqlite'), { readOnly: true });
+    const platform = h.app.get(PlatformStore);
+    const inspection = new DatabaseSync(join(platform.workspaceConfig(platform.defaultWorkspaceId).dataDir, 'live.sqlite'), { readOnly: true });
     let verifier: string;
     try {
       const raw = String(inspection.prepare('SELECT payload FROM pending_bindings').get()!.payload);

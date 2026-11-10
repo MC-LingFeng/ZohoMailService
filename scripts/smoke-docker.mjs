@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -26,6 +26,7 @@ await once(probe, 'listening');
 const port = probe.address().port;
 await new Promise((done) => probe.close(done));
 let password = randomBytes(24).toString('base64url');
+const bootstrapPassword = password;
 const key = randomBytes(32).toString('hex');
 const publicUrl = `http://localhost:${port}`;
 const config = `# 运行模式\nAPP_MODE=live\n# 工作区密码\nAPP_PASSWORD=${password}\n# 令牌加密密钥\nTOKEN_ENCRYPTION_KEY=${key}\n# 网页访问地址\nFRONTEND_URL=${publicUrl}\n# 授权回调地址\nZOHO_REDIRECT_URI=${publicUrl}/api/auth/zoho/callback\n# 自定义配置\nDOCKER_SMOKE_CUSTOM=fixture\n`;
@@ -53,6 +54,8 @@ fixture.saveAccount({
   encryptedRefreshToken: encryptToken('test-only-refresh-token', key),
 });
 fixture.onModuleDestroy();
+const originalDatabase = await readFile(join(dataDir, 'live.sqlite'));
+const originalChecksum = createHash('sha256').update(originalDatabase).digest('hex');
 const environment = {
   ...process.env,
   ZOHOME_ENV_FILE: configFile,
@@ -93,12 +96,15 @@ async function ready() {
     `Container startup timed out:\n${compose(['logs', '--no-color'])}`,
   );
 }
-async function login() {
-  const response = await fetch(`${base}/api/session`, {
+async function loginResponse(candidate = password) {
+  return fetch(`${base}/api/session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: publicUrl },
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ username: 'admin', password: candidate }),
   });
+}
+async function login() {
+  const response = await loginResponse();
   assert.equal(response.status, 201);
   return response.headers.get('set-cookie').split(';')[0];
 }
@@ -126,7 +132,7 @@ try {
     mounts.find((mount) => mount.Destination === '/app/data').RW,
     true,
   );
-  for (const route of ['/', '/mail', '/accounts', '/rebates', '/settings', '/guide']) {
+  for (const route of ['/', '/mail', '/accounts', '/rebates', '/workspaces', '/settings', '/guide']) {
     const response = await fetch(`${base}${route}`);
     assert.equal(response.status, 200);
     assert.match(await response.text(), /ZoHome/);
@@ -136,10 +142,17 @@ try {
   assert.equal((await fetch(`${base}/api/rebates/options`)).status, 401);
   assert.equal((await fetch(`${base}/api/settings`)).status, 401);
   const cookie = await login();
+  const catalogResponse = await fetch(`${base}/api/workspaces`, { headers: { Cookie: cookie } });
+  assert.equal(catalogResponse.status, 200);
+  const catalog = await catalogResponse.json();
+  const workspaceId = catalog.defaultWorkspaceId;
+  assert.match(workspaceId, /^[a-f\d-]{36}$/i);
+  assert.equal(catalog.workspaces.some((workspace) => workspace.id === workspaceId && workspace.role === 'owner'), true);
   const headers = {
     Cookie: cookie,
     Origin: publicUrl,
     'Content-Type': 'application/json',
+    'X-Workspace-Id': workspaceId,
   };
   const settingsResponse = await fetch(`${base}/api/settings`, { headers });
   assert.equal(settingsResponse.status, 200);
@@ -156,15 +169,15 @@ try {
     assert.equal(field.configured, true);
     assert.equal(field.value, null);
   }
+  assert.equal(settings.fields.find((field) => field.key === 'APP_PASSWORD').readOnly, true);
   assert.equal(JSON.stringify(settings).includes(password), false);
   assert.equal(JSON.stringify(settings).includes(key), false);
-  const nextPassword = randomBytes(24).toString('base64url');
   const savedSettingsResponse = await fetch(`${base}/api/settings`, {
     method: 'PATCH',
     headers,
     body: JSON.stringify({
       revision: settings.revision,
-      values: { APP_PASSWORD: nextPassword },
+      values: { DOCKER_SMOKE_CUSTOM: 'updated fixture' },
     }),
   });
   assert.equal(savedSettingsResponse.status, 200);
@@ -174,18 +187,17 @@ try {
     savedSettings.fields.find((field) => field.key === 'APP_PASSWORD').value,
     null,
   );
-  assert.equal(JSON.stringify(savedSettings).includes(nextPassword), false);
+  assert.equal(JSON.stringify(savedSettings).includes(password), false);
   assert.equal(JSON.stringify(savedSettings).includes(key), false);
   expectedConfig = await readFile(configFile, 'utf8');
   const savedConfig = parse(expectedConfig);
-  assert.equal(savedConfig.APP_PASSWORD, nextPassword);
+  assert.equal(savedConfig.APP_PASSWORD, bootstrapPassword);
   assert.equal(savedConfig.TOKEN_ENCRYPTION_KEY, key);
-  assert.deepEqual({ ...savedConfig, APP_PASSWORD: password }, parse(config));
+  assert.deepEqual({ ...savedConfig, DOCKER_SMOKE_CUSTOM: 'fixture' }, parse(config));
   assert.deepEqual(
     expectedConfig.split('\n').filter((line) => line.startsWith('#')),
     config.split('\n').filter((line) => line.startsWith('#')),
   );
-  password = nextPassword;
   const accounts = await (
     await fetch(`${base}/api/accounts`, { headers })
   ).json();
@@ -248,12 +260,42 @@ try {
     }),
   });
   assert.equal(bannedResponse.status, 201);
+  const otherResponse = await fetch(`${base}/api/workspaces`, { method: 'POST', headers, body: JSON.stringify({ name: 'Docker isolated workspace' }) });
+  assert.equal(otherResponse.status, 201);
+  const otherWorkspace = await otherResponse.json();
+  const otherHeaders = { ...headers, 'X-Workspace-Id': otherWorkspace.id };
+  assert.deepEqual(await (await fetch(`${base}/api/accounts`, { headers: otherHeaders })).json(), []);
+  assert.equal((await (await fetch(`${base}/api/rebates`, { headers: otherHeaders })).json()).total, 0);
+  assert.equal((await (await fetch(`${base}/api/fingerprint-browsers`, { headers: otherHeaders })).json()).total, 0);
+  const otherInput = {
+    accountId: '', accountEmail: 'other-workspace@example.com', siteName: 'Docker rebate fixture',
+    domain: 'cashback.example.com', registeredAt: '2026-01-01', offerName: 'Isolated offer',
+    totalRevenue: 3, totalCost: 1, settled: false, settlementCycle: '', banned: false, ip: '',
+    loginPassword: 'synthetic isolated rebate password',
+  };
+  const otherRebateResponse = await fetch(`${base}/api/rebates`, { method: 'POST', headers: otherHeaders, body: JSON.stringify(otherInput) });
+  assert.equal(otherRebateResponse.status, 201);
+  const otherRebate = await otherRebateResponse.json();
+  assert.equal((await (await fetch(`${base}/api/rebates`, { headers })).json()).total, 2);
+  assert.equal((await fetch(`${base}/api/rebates/${otherRebate.id}`, { method: 'PATCH', headers, body: JSON.stringify(otherInput) })).status, 404);
+  assert.equal((await fetch(`${base}/api/accounts`, { headers: { ...headers, 'X-Workspace-Id': randomUUID() } })).status, 403);
+  const nextPassword = randomBytes(24).toString('base64url');
+  const changedPassword = await fetch(`${base}/api/me/password`, {
+    method: 'PATCH', headers, body: JSON.stringify({ currentPassword: password, password: nextPassword }),
+  });
+  assert.equal(changedPassword.status, 200);
+  assert.equal((await fetch(`${base}/api/accounts`, { headers })).status, 401, 'password change must revoke the old session');
+  assert.equal((await loginResponse(bootstrapPassword)).status, 401);
+  password = nextPassword;
+  assert.equal(parse(await readFile(configFile, 'utf8')).APP_PASSWORD, bootstrapPassword, 'account password changes must not rewrite bootstrap configuration');
   compose(['down']);
   await assert.rejects(
     fetch(`${base}/api/status`, { signal: AbortSignal.timeout(1000) }),
   );
   assert.equal(await readFile(configFile, 'utf8'), expectedConfig);
-  const check = new MailStore(storeConfig);
+  assert.equal(createHash('sha256').update(await readFile(join(dataDir, 'live.sqlite'))).digest('hex'), originalChecksum, 'the original legacy database must remain untouched');
+  assert.ok((await readFile(join(dataDir, 'platform-live.sqlite'))).length);
+  const check = new MailStore({ ...storeConfig, dataDir: join(dataDir, 'workspaces', workspaceId) });
   assert.equal(
     check.account('docker-fixture').name,
     'Persisted across recreation',
@@ -261,13 +303,18 @@ try {
   check.onModuleDestroy();
   compose(['up', '-d', '--no-build']);
   await ready();
+  assert.equal((await loginResponse(bootstrapPassword)).status, 401, 'restarting must not reset the account password from APP_PASSWORD');
   const secondCookie = await login();
+  const secondHeaders = { ...headers, Cookie: secondCookie };
+  const persistedCatalog = await (await fetch(`${base}/api/workspaces`, { headers: secondHeaders })).json();
+  assert.equal(persistedCatalog.defaultWorkspaceId, workspaceId);
+  assert.equal(persistedCatalog.workspaces.some((workspace) => workspace.id === otherWorkspace.id), true);
   const second = await (
-    await fetch(`${base}/api/accounts`, { headers: { Cookie: secondCookie } })
+    await fetch(`${base}/api/accounts`, { headers: secondHeaders })
   ).json();
   assert.equal(second[0].name, 'Persisted across recreation');
   const persistedRebates = await (
-    await fetch(`${base}/api/rebates`, { headers: { Cookie: secondCookie } })
+    await fetch(`${base}/api/rebates`, { headers: secondHeaders })
   ).json();
   assert.equal(persistedRebates.total, 2);
   const savedRebate = persistedRebates.records.find(
@@ -298,16 +345,23 @@ try {
   );
   const persistedOptions = await (
     await fetch(`${base}/api/rebates/options`, {
-      headers: { Cookie: secondCookie },
+      headers: secondHeaders,
     })
   ).json();
-  assert.deepEqual(persistedOptions, {
+  assert.deepEqual({ siteNames: persistedOptions.siteNames, domains: persistedOptions.domains, offerNames: persistedOptions.offerNames }, {
     siteNames: ['Docker banned fixture', 'Docker rebate fixture'],
     domains: ['blocked.example.com', 'cashback.example.com'],
     offerNames: ['Banned offer', 'Local test offer'],
   });
+  assert.equal(persistedOptions.accounts.some((account) => account.id === 'docker-fixture'), true);
+  const persistedOther = await (await fetch(`${base}/api/rebates`, { headers: { ...secondHeaders, 'X-Workspace-Id': otherWorkspace.id } })).json();
+  assert.equal(persistedOther.total, 1);
+  assert.equal(persistedOther.records[0].id, otherRebate.id);
+  assert.equal(persistedOther.records[0].loginPassword, otherInput.loginPassword);
+  assert.equal((await (await fetch(`${base}/api/accounts`, { headers: { ...secondHeaders, 'X-Workspace-Id': otherWorkspace.id } })).json()).length, 0);
+  assert.equal(parse(await readFile(configFile, 'utf8')).APP_PASSWORD, bootstrapPassword);
   console.log(
-    'Docker smoke passed: image excludes private files; writable env settings, masked secrets, encrypted database, SPA/API, rebate records and totals, stop, and container recreation verified.',
+    'Docker smoke passed: image excludes private files; workspace header isolation, preserved legacy database, persistent catalog and encrypted records, masked platform settings, account password changes across recreation without changing bootstrap configuration, SPA/API, rebate totals, and stop verified.',
   );
 } finally {
   compose(['down', '--remove-orphans'], true);

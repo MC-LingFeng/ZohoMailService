@@ -35,7 +35,7 @@ export class OutlookMailService {
   private beginBinding(req: Request, email: string, clientId: string, encryptedClientSecret: string, accountId?: string) {
     if (!this.config.live) throw new BadRequestException('演示模式使用示例邮箱，切换真实模式后即可连接 Outlook');
     if (!/^[a-z\d.-]+$/i.test(this.config.outlookTenant)) throw new BadRequestException('OUTLOOK_TENANT 格式无效');
-    const state = this.sessions.createState(req);
+    const state = this.sessions.createState(req, 'outlook');
     const verifier = randomBytes(32).toString('base64url');
     this.store.saveBinding({
       stateHash: createHash('sha256').update(state).digest('hex'),

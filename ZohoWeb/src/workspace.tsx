@@ -3,14 +3,22 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { api } from './api';
-import type { Account, Activity, AppStatus, Overview } from './types';
+import { createWorkspaceApi, type ApiRequest } from './api';
+import type { Account, Activity, AppStatus, Overview, WorkspaceSummary } from './types';
 
 interface Workspace {
   status: AppStatus;
+  workspace: WorkspaceSummary;
+  workspaces: WorkspaceSummary[];
+  request: ApiRequest;
+  switchWorkspace: (id: string) => void;
+  reloadWorkspaces: (selectId?: string) => Promise<void>;
   accounts: Account[];
   overview: Overview | null;
   activity: Activity[];
@@ -29,13 +37,38 @@ export const useWorkspace = () => {
 
 export function WorkspaceProvider({
   status,
+  workspace,
+  workspaces,
+  switchWorkspace,
+  reloadWorkspaces: reloadCatalog,
   reloadStatus,
   children,
 }: {
   status: AppStatus;
+  workspace: WorkspaceSummary;
+  workspaces: WorkspaceSummary[];
+  switchWorkspace: (id: string) => void;
+  reloadWorkspaces: (selectId?: string, signal?: AbortSignal) => Promise<void>;
   reloadStatus: () => Promise<void>;
   children: ReactNode;
 }) {
+  const scope = useRef({ active: true, controller: new AbortController() });
+  useLayoutEffect(() => {
+    scope.current.active = true;
+    if (scope.current.controller.signal.aborted) scope.current.controller = new AbortController();
+    return () => {
+      scope.current.active = false;
+      scope.current.controller.abort();
+    };
+  }, []);
+  const request = useMemo(() => createWorkspaceApi(workspace.id, () => {
+    if (!scope.current.active) throw new DOMException('工作区已切换', 'AbortError');
+    return scope.current.controller.signal;
+  }), [workspace.id]);
+  const reloadWorkspaces = useCallback(async (selectId?: string) => {
+    if (!scope.current.active) throw new DOMException('工作区已切换', 'AbortError');
+    await reloadCatalog(selectId, scope.current.controller.signal);
+  }, [reloadCatalog]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [activity, setActivity] = useState<Activity[]>([]);
@@ -43,22 +76,26 @@ export function WorkspaceProvider({
   const [error, setError] = useState('');
   const [notification, setNotification] = useState('');
   const refresh = useCallback(async () => {
+    const lifetime = scope.current.controller.signal;
+    if (!scope.current.active) return;
     setError('');
     try {
       const [nextAccounts, nextOverview, nextActivity] = await Promise.all([
-        api<Account[]>('/accounts'),
-        api<Overview>('/overview'),
-        api<Activity[]>('/activity'),
+        request<Account[]>('/accounts'),
+        request<Overview>('/overview'),
+        request<Activity[]>('/activity'),
       ]);
+      if (lifetime.aborted) return;
       setAccounts(nextAccounts);
       setOverview(nextOverview);
       setActivity(nextActivity);
     } catch (error) {
+      if (lifetime.aborted) return;
       setError(error instanceof Error ? error.message : '加载失败');
     } finally {
-      setLoading(false);
+      if (!lifetime.aborted) setLoading(false);
     }
-  }, []);
+  }, [request]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -72,6 +109,11 @@ export function WorkspaceProvider({
     <Context.Provider
       value={{
         status,
+        workspace,
+        workspaces,
+        request,
+        switchWorkspace,
+        reloadWorkspaces,
         accounts,
         overview,
         activity,

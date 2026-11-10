@@ -62,7 +62,7 @@ export class GoogleAdsClient {
   async campaignCosts(): Promise<CampaignCost[]> {
     const managerId = this.config.adsManagerAccount.replace(/[\s-]/g, '');
     if (!/^\d{10}$/.test(managerId))
-      throw new BadRequestException('请在服务端 .env 中配置有效的 ADS_MANAGER_ACCOUNT（10 位经理号）');
+      throw new BadRequestException('请在工作空间设置中配置有效的 ADS_MANAGER_ACCOUNT（10 位经理号）');
     if (!/^v\d{1,3}$/.test(this.config.adsApiVersion))
       throw new BadRequestException('ADS_API_VERSION 格式须为 v26 这样的 API 主版本号');
 
@@ -115,7 +115,7 @@ export class GoogleAdsClient {
 
   private async credentials(): Promise<ServiceAccount> {
     try {
-      const source = await readFile(this.config.adsCredentialsFile, 'utf8');
+      const source = this.config.adsCredentialsJson || await readFile(this.config.adsCredentialsFile, 'utf8');
       const data = JSON.parse(source);
       if (data.type !== 'service_account' || typeof data.client_email !== 'string' ||
           !data.client_email || typeof data.private_key !== 'string') throw new Error();
@@ -127,7 +127,7 @@ export class GoogleAdsClient {
         fingerprint: createHash('sha256').update(source).digest('hex'),
       };
     } catch {
-      throw new ServiceUnavailableException('无法读取有效的 Google Ads 服务账号密钥，请检查 ADS_CREDENTIALS_FILE 或 .env 同目录的 credentials.json');
+      throw new ServiceUnavailableException('无法读取有效的 Google Ads 服务账号密钥，请检查工作空间设置或原有 ADS_CREDENTIALS_FILE');
     }
   }
 

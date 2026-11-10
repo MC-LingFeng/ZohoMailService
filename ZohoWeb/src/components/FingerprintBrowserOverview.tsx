@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Search } from 'lucide-react';
-import { api } from '../api';
+import { useWorkspace } from '../workspace';
 import type { FingerprintBrowserOverview as OverviewData } from '../types';
 import FingerprintBrowserHeatmap from './FingerprintBrowserHeatmap';
 import { EmptyState, ErrorNotice, Spinner } from './ui';
 
 export default function FingerprintBrowserOverview({ revision }: { revision: number }) {
+  const { request: api } = useWorkspace();
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

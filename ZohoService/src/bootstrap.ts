@@ -10,6 +10,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AppConfig } from './config';
 import { SettingsService } from './settings.service';
+import { WorkspaceContext } from './workspace-context';
 
 export interface AppOptions {
   webRoot?: string;
@@ -32,6 +33,9 @@ export async function createApp(options: AppOptions = {}) {
     logger: ['error', 'warn', 'log'],
   });
   const config = app.get(AppConfig);
+  app.get(SettingsService).enablePlatformMode();
+  const workspaceContext = app.get(WorkspaceContext);
+  app.use((_req: express.Request, _res: express.Response, next: express.NextFunction) => workspaceContext.run(next));
   // Excel is sent as base64 JSON; retain the normal body limit on other routes.
   const importJson = express.json({ limit: '8mb' });
   app.use(

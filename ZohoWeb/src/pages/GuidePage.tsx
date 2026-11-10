@@ -307,7 +307,7 @@ export default function GuidePage() {
                   </p>
                 )}
                 <p>
-                  在服务端环境文件中配置以下项目，再重新启动服务。桌面版使用控制台所显示的
+                  平台管理员在服务端环境文件中配置以下项目，再重新启动服务。桌面版使用控制台所显示的
                   zohome.env，源码开发使用 ZohoService/.env：
                 </p>
                 <dl className="divide-y divide-line-soft rounded-lg border border-line-soft px-3">
@@ -315,7 +315,7 @@ export default function GuidePage() {
                     ['APP_MODE', '设为 live，启用真实邮箱模式'],
                     [
                       'APP_PASSWORD',
-                      '设置至少 12 个字符的 ZoHome 系统访问密码',
+                      '首次初始化 admin 账号的密码，至少 12 个字符；日后在系统设置中修改账号密码',
                     ],
                     [
                       'TOKEN_ENCRYPTION_KEY',
@@ -343,7 +343,7 @@ export default function GuidePage() {
                   新绑定不需要在服务端环境变量中设置 Client ID 或 Client
                   Secret，它们由绑定表单按邮箱提交。待授权记录中的 Client Secret
                   会加密保存，记录在 10 分钟后过期；授权成功后，Client Secret 和
-                  Refresh Token 加密存入数据库。具体启动命令请参阅项目 README。
+                  Refresh Token 加密存入发起授权的工作区。开始绑定前请确认顶部所选工作区，其他工作区不会自动获得该邮箱。具体启动命令请参阅项目 README。
                 </p>
                 <a
                   href={setupProvider === 'outlook'

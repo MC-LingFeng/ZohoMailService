@@ -4,6 +4,10 @@
 
 多账号登录、工作区切换、独立配置、旧数据升级和完整备份方式见 [多账号与工作区](docs/multi-workspace.md)。
 
+腾讯云 Ubuntu 服务器的本地一键发版、现有数据迁移、HTTPS、回滚和每日备份见 [腾讯云部署与发版](docs/tencent-deployment.md)。
+
+Firebase Hosting、Cloud Run / Google Cloud VM 的部署路线、定时数据库备份与恢复验收见 [Firebase 部署与定时备份方案](docs/firebase-deployment.md)。
+
 绑定邮箱时可选择 Zoho 或 Outlook。Outlook 使用 Microsoft Graph 和微软网页登录授权，支持个人 Outlook/Hotmail 邮箱及具有 Exchange Online 邮箱的 Microsoft 365 账号，应用凭据与离线令牌按邮箱加密保存。配置 Microsoft 应用及回调地址后即可连接，详见 [Outlook 接入说明](docs/outlook.md)。已有 Zoho 账号及其返利网数据继续使用。
 
 前端位于 `ZohoWeb`，使用 React、Vite、TypeScript 和 Tailwind CSS；后端位于 `ZohoService`，使用 NestJS、TypeScript 和 SQLite。界面样式由统一的 Tailwind 主题和全局公共类管理。
@@ -167,3 +171,9 @@ Zoho 官方公布 API 限额为 30 次请求/分钟，但没有明确说明按�
 默认服务只监听本机。需要向其他设备开放或部署到服务器时，应配置 HTTPS、反向代理和访问控制，并验证 Cookie、OAuth 回调、环境变量及备份策略。
 
 目录说明及调用流程见 [架构说明](docs/architecture.md)。
+
+## 发版
+```
+nvm use
+npm run release -- deploy
+```

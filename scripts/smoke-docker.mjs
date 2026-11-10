@@ -20,6 +20,9 @@ const work = await mkdtemp(join(root, '.runtime', 'docker-smoke-'));
 const dataDir = join(work, 'data');
 const configFile = join(work, '.env');
 const project = `zohome-smoke-${randomUUID().slice(0, 8)}`;
+const testImage = process.env.ZOHOME_TEST_IMAGE || 'zohome:local';
+const imageOverride = join(work, 'image.compose.json');
+await writeFile(imageOverride, JSON.stringify({ services: { zohome: { image: testImage } } }));
 const probe = createServer();
 probe.listen(0, '127.0.0.1');
 await once(probe, 'listening');
@@ -79,7 +82,7 @@ function docker(args, allowFailure = false) {
   return result.stdout.trim();
 }
 const compose = (args, optional = false) =>
-  docker(['compose', '-p', project, ...args], optional);
+  docker(['compose', '-f', join(root, 'compose.yaml'), '-f', imageOverride, '-p', project, ...args], optional);
 const base = `http://127.0.0.1:${port}`;
 async function ready() {
   for (let attempt = 0; attempt < 150; attempt++) {
@@ -114,7 +117,7 @@ try {
     '--rm',
     '--entrypoint',
     'node',
-    'zohome:local',
+    testImage,
     '-e',
     "const fs=require('node:fs');if(fs.existsSync('/app/config/zohome.env')||fs.existsSync('/app/ZohoService/.env')||fs.readdirSync('/app/data').length)process.exit(1)",
   ]);

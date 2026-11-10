@@ -22,3 +22,5 @@ release/
 /data/
 /zohome.env
 credentials.json
+.deploy/
+deploy/

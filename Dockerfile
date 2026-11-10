@@ -1,5 +1,7 @@
 ARG NODE_IMAGE=node:22.22.2-bookworm-slim
-FROM ${NODE_IMAGE} AS build
+# Compile platform-independent JS/assets on the builder's native architecture.
+# The final stage still uses the requested target platform (e.g. linux/amd64).
+FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS build
 
 WORKDIR /app
 COPY package.json package-lock.json ./

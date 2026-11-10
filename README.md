@@ -172,8 +172,10 @@ Zoho 官方公布 API 限额为 30 次请求/分钟，但没有明确说明按�
 
 目录说明及调用流程见 [架构说明](docs/architecture.md)。
 
-## 发版
+
 ```
 nvm use
 npm run release -- deploy
+npm run release -- backup
+npm run release --restore-data
 ```

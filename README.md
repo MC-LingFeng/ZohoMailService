@@ -179,3 +179,22 @@ npm run release -- deploy
 npm run release -- backup
 npm run release --restore-data
 ```
+
+```umask 077
+
+1.
+node scripts/deploy/crypto.mjs decrypt \
+  .deploy/101.32.62.74-057586e651-backup.key \
+  < release/backups/101.32.62.74/manual-20261111T013533Z-636f0c.tar.gz.enc \
+  > release/backups/101.32.62.74/manual-20261111T013533Z-636f0c.tar.gz
+
+2.
+  tar -tzf release/backups/101.32.62.74/manual-20261111T013533Z-636f0c.tar.gz
+
+
+  3.
+  mkdir -p release/restored-20261111
+
+tar -xzf release/backups/101.32.62.74/manual-20261111T013533Z-636f0c.tar.gz \
+  -C release/restored-20261111
+  ```

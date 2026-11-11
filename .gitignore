@@ -16,6 +16,7 @@ coverage/
 *.db-shm
 *.db-wal
 ZohoService/data/
+ZohoService/data_old/
 ZohoService/.data/
 .openai/
 release/
@@ -24,3 +25,4 @@ release/
 credentials.json
 .deploy/
 deploy/
+

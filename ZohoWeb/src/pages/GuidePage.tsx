@@ -9,26 +9,25 @@ import {
   Clock3,
   Copy,
   ExternalLink,
-  FolderOpen,
-  Inbox,
+  Building2,
+  Fingerprint,
+  Settings,
   KeyRound,
   MailCheck,
   Plus,
   RefreshCw,
   Search,
-  Send,
   ShieldCheck,
   Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
 const chapters = [
-  { id: 'connect', label: '连接邮箱' },
-  { id: 'organize', label: '管理账号' },
-  { id: 'read', label: '查看邮件' },
-  { id: 'send', label: '发送邮件' },
-  { id: 'rebates', label: '记录返利网' },
-  { id: 'faq', label: '常见问题' },
+  { id: 'connect', label: '邮箱绑定' },
+  { id: 'browsers', label: '指纹浏览器' },
+  { id: 'rebates', label: '返利网' },
+  { id: 'workspaces', label: '工作区' },
+  { id: 'settings', label: '系统设置' },
 ];
 
 const questions = [
@@ -86,11 +85,11 @@ function StepSection({
           <Icon className="size-5" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="eyebrow">STEP {number}</p>
+          <p className="eyebrow">分类 {number}</p>
           <h2 className="mt-1.5 text-lg font-semibold tracking-tight">
             {title}
           </h2>
-          <p className="mt-2 text-xs leading-6 text-muted">{description}</p>
+          <p className="mt-2 text-[15px] leading-7 text-muted">{description}</p>
         </div>
         <span
           className="hidden text-4xl font-light tracking-tight text-line-soft sm:block"
@@ -112,8 +111,8 @@ function Instruction({
   children: ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-3 text-xs leading-6 text-body">
-      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[10px] font-semibold text-muted">
+    <li className="flex items-start gap-3 text-[15px] leading-7 text-body">
+      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[12px] font-semibold text-muted">
         {number}
       </span>
       <span>{children}</span>
@@ -146,14 +145,14 @@ export default function GuidePage() {
       <div className="flex flex-wrap items-start justify-between gap-5">
         <div>
           <p className="eyebrow">YOUR ZOHOME HANDBOOK</p>
-          <h1 className="page-heading mt-3">几步上手，让邮箱井井有条。</h1>
+          <h1 className="page-heading mt-3">使用指南</h1>
           <p className="page-description">
-            从连接第一个账号开始，在同一个工作台里处理每一封邮件。
+            按页面了解邮箱绑定、指纹浏览器、返利网、工作区和系统设置的操作流程。
           </p>
         </div>
         <span className="badge-muted mt-1 gap-2 px-3 py-2">
           <Clock3 className="size-3.5" aria-hidden="true" />
-          预计阅读 3 分钟
+          预计阅读 10 分钟
         </span>
       </div>
 
@@ -162,12 +161,11 @@ export default function GuidePage() {
           <BookOpen className="size-5" aria-hidden="true" />
         </div>
         <div>
-          <p className="text-[13px] font-semibold text-accent">
-            一个工作台，一套熟悉的操作。
+          <p className="text-[14px] font-semibold text-accent">
+            先选择工作区，再开始操作。
           </p>
-          <p className="mt-1 text-xs leading-6 text-accent/80">
-            连接邮箱 → 整理账号 → 查看收件箱与垃圾邮件 →
-            选择账号发件。首次使用时，可以先在演示模式中体验。
+          <p className="mt-1 text-[15px] leading-7 text-accent/80">
+            推荐顺序：选择工作区 → 绑定邮箱 → 导入指纹浏览器 → 录入返利网并关联浏览器 → 配置 Google Ads 后刷新预算。
           </p>
         </div>
       </div>
@@ -182,7 +180,7 @@ export default function GuidePage() {
             href={`#${chapter.id}`}
             className="tab gap-2 px-3 md:px-4"
           >
-            <span className="text-[10px] text-subtle">0{index + 1}</span>
+            <span className="text-[12px] text-subtle">0{index + 1}</span>
             {chapter.label}
           </a>
         ))}
@@ -190,13 +188,9 @@ export default function GuidePage() {
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
         <div className="min-w-0 space-y-5">
-          <StepSection
-            id="connect"
-            number="01"
-            icon={Plus}
-            title="把第一个邮箱带回家"
-            description="选择邮箱服务并填写应用配置，完成一次官方授权，之后就可以直接切换。"
-          >
+          <StepSection id="connect" number="01" icon={Plus} title="邮箱绑定" description="在当前工作区绑定 Zoho 或 Outlook 邮箱，然后管理账号、阅读和发送邮件。">
+            <div id="binding" className="scroll-mt-24 space-y-4">
+              <h3 className="text-base font-semibold">添加邮箱与官方授权</h3>
             <ol className="space-y-3">
               <Instruction number={1}>
                 进入「邮箱账号」，点击「添加邮箱」，选择 Zoho 或 Outlook，填写要绑定的邮箱地址、Client
@@ -216,13 +210,13 @@ export default function GuidePage() {
                 className="mt-0.5 size-4 shrink-0 text-accent"
                 aria-hidden="true"
               />
-              <p className="text-xs leading-6 text-muted">
+              <p className="text-[15px] leading-7 text-muted">
                 邮箱密码只在邮箱服务的
                 官方页面输入。若浏览器中登录了其他邮箱，系统会拒绝不匹配的授权，并提示重新选择正确账号；不会把它绑定到你填写的地址。
               </p>
             </div>
             <details className="group rounded-xl border border-line">
-              <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-xs font-medium text-body [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-medium text-body [&::-webkit-details-marker]:hidden">
                 <KeyRound className="size-4 text-subtle" aria-hidden="true" />
                 首次使用：准备应用信息与服务端配置
                 <ChevronDown
@@ -230,7 +224,7 @@ export default function GuidePage() {
                   aria-hidden="true"
                 />
               </summary>
-              <div className="space-y-4 border-t border-line-soft p-4 text-xs leading-6 text-muted">
+              <div className="space-y-4 border-t border-line-soft p-4 text-[15px] leading-7 text-muted">
                 <label className="block">
                   <span className="field-label">选择要配置的邮箱服务</span>
                   <select
@@ -280,7 +274,7 @@ export default function GuidePage() {
                   Secret，稍后填入「添加邮箱」表单。应用的回调地址须与服务端配置一致，默认本地开发地址为：
                 </p>}
                 <div className="flex items-start gap-2 rounded-lg bg-surface-muted p-3">
-                  <code className="min-w-0 flex-1 break-all text-[11px] text-body">
+                  <code className="min-w-0 flex-1 break-all text-[13px] text-body">
                     {callbackUrl}
                   </code>
                   <button
@@ -332,7 +326,7 @@ export default function GuidePage() {
                       key={name}
                       className="grid gap-1 py-2.5 md:grid-cols-[190px_minmax(0,1fr)]"
                     >
-                      <dt className="break-all font-mono text-[11px] text-body">
+                      <dt className="break-all font-mono text-[13px] text-body">
                         {name}
                       </dt>
                       <dd>{meaning}</dd>
@@ -358,15 +352,9 @@ export default function GuidePage() {
                 </a>
               </div>
             </details>
-          </StepSection>
-
-          <StepSection
-            id="organize"
-            number="02"
-            icon={FolderOpen}
-            title="给每个账号安排好位置"
-            description="账号多了以后，用搜索和分组快速找到需要处理的邮箱。"
-          >
+            </div>
+            <div id="organize" className="scroll-mt-24 space-y-4">
+              <h3 className="text-base font-semibold">管理账号与重新授权</h3>
             <ol className="space-y-3">
               <Instruction number={1}>
                 在「邮箱账号」中搜索邮箱地址或账号名称，快速缩小查找范围。
@@ -388,8 +376,8 @@ export default function GuidePage() {
                   className="mb-2.5 size-4 text-accent"
                   aria-hidden="true"
                 />
-                <p className="text-xs font-medium text-ink">先搜索，再操作</p>
-                <p className="mt-1.5 text-xs leading-6 text-muted">
+                <p className="text-sm font-medium text-ink">先搜索，再操作</p>
+                <p className="mt-1.5 text-[15px] leading-7 text-muted">
                   给账号取清晰的名称，发件和切换时更容易确认。
                 </p>
               </div>
@@ -398,22 +386,16 @@ export default function GuidePage() {
                   className="mb-2.5 size-4 text-accent"
                   aria-hidden="true"
                 />
-                <p className="text-xs font-medium text-ink">移除账号前确认</p>
-                <p className="mt-1.5 text-xs leading-6 text-muted">
+                <p className="text-sm font-medium text-ink">移除账号前确认</p>
+                <p className="mt-1.5 text-[15px] leading-7 text-muted">
                   从 ZoHome 移除连接会清理本地授权和该邮箱的返利网记录，不会注销
                   邮箱账号。
                 </p>
               </div>
             </div>
-          </StepSection>
-
-          <StepSection
-            id="read"
-            number="03"
-            icon={Inbox}
-            title="收件箱、通知和其他文件夹，一起照看"
-            description="从左侧的分组与邮箱树中找到账号，选中后加载它的邮件。"
-          >
+            </div>
+            <div id="read" className="scroll-mt-24 space-y-4">
+              <h3 className="text-base font-semibold">邮件工作台：查看邮件</h3>
             <ol className="space-y-3">
               <Instruction number={1}>
                 进入「邮件工作台」，左侧一级是账号分组，展开后显示二级邮箱。点击一个邮箱，即可加载该账号的邮件。
@@ -433,20 +415,14 @@ export default function GuidePage() {
                 className="mt-0.5 size-4 shrink-0 text-warning-ink"
                 aria-hidden="true"
               />
-              <p className="text-xs leading-6 text-warning-ink/80">
+              <p className="text-[15px] leading-7 text-warning-ink/80">
                 读取结果可能来自缓存。刷新针对当前邮箱执行；如果遇到邮箱服务的
                 频率限制，请稍后再试。垃圾邮件也值得定期检查，避免漏掉被误判的重要来信。
               </p>
             </div>
-          </StepSection>
-
-          <StepSection
-            id="send"
-            number="04"
-            icon={Send}
-            title="从正确的邮箱，发出下一封邮件"
-            description="写信前先确认发件账号，发送前再核对一次收件人和内容。"
-          >
+            </div>
+            <div id="send" className="scroll-mt-24 space-y-4">
+              <h3 className="text-base font-semibold">写邮件：选择发件账号</h3>
             <ol className="space-y-3">
               <Instruction number={1}>
                 点击「写邮件」，明确选择这封邮件使用的发件账号。
@@ -463,7 +439,7 @@ export default function GuidePage() {
                 (item) => (
                   <span
                     key={item}
-                    className="inline-flex items-center gap-1.5 text-xs text-body"
+                    className="inline-flex items-center gap-1.5 text-sm text-body"
                   >
                     <Check
                       className="size-3.5 text-accent"
@@ -474,39 +450,11 @@ export default function GuidePage() {
                 ),
               )}
             </div>
-            <p className="text-xs leading-6 text-muted">
+            <p className="text-[15px] leading-7 text-muted">
               演示模式中的发送仅为模拟。真实模式使用对应账号发送邮件，仍受邮箱服务
               的账号额度和服务规则约束。
             </p>
-          </StepSection>
-
-          <StepSection
-            id="rebates"
-            number="05"
-            icon={ChartNoAxesCombined}
-            title="按邮箱记录返利网与收益"
-            description="一条记录关联一个邮箱，可在同一个邮箱下记录多个返利网和 offer。"
-          >
-            <ol className="space-y-3">
-              <Instruction number={1}>
-                进入「返利网」，点击「新增记录」，搜索并选择关联邮箱，填写返利网名称、域名、创建时间和
-                Offer。名称、域名和 Offer
-                可搜索并选择已有值，也可手动输入新值；保存后下次可直接复用。
-              </Instruction>
-              <Instruction number={2}>
-                录入总收益和总成本，填写结款周期、IP，并标记是否结款、是否封户。金额请统一使用同一币种。
-              </Instruction>
-              <Instruction number={3}>
-                保存后可继续编辑或删除。通过邮箱、关键词、结款和封户状态筛选记录，顶部三个图会同步展示匹配邮箱的收益、成本与转化对比。总览中已封户记录只计成本、不计收益；收益图使用浅红色表示未收款，绿色表示已收款，同一邮箱可分段显示两种状态。
-              </Instruction>
-            </ol>
-            <div className="notice">
-              转化按「总成本:总收益」自动约分，并补充三位小数的近似值，例如图表显示
-              4:41 ≈ 1:10.250，表格显示 4:41 ≈ 10.250。成本为零时近似值显示
-              —。整体转化根据汇总金额计算，统计包含筛选后的全部记录，不受明细分页影响；明细保留原始录入金额。
             </div>
-          </StepSection>
-
           <section id="faq" className="panel scroll-mt-24 p-6 md:p-7">
             <div className="mb-2 flex items-center gap-3">
               <span className="eyebrow">A LITTLE MORE HELP</span>
@@ -518,20 +466,100 @@ export default function GuidePage() {
             <div className="mt-5 divide-y divide-line-soft">
               {questions.map((question) => (
                 <details key={question.title} className="group py-1">
-                  <summary className="flex cursor-pointer list-none items-center gap-4 py-4 text-xs leading-6 font-medium text-ink [&::-webkit-details-marker]:hidden">
+                  <summary className="flex cursor-pointer list-none items-center gap-4 py-4 text-[15px] leading-7 font-medium text-ink [&::-webkit-details-marker]:hidden">
                     {question.title}
                     <ChevronDown
                       className="ml-auto size-4 shrink-0 text-subtle transition-transform group-open:rotate-180"
                       aria-hidden="true"
                     />
                   </summary>
-                  <p className="pr-6 pb-4 text-xs leading-7 text-muted">
+                  <p className="pr-6 pb-4 text-[15px] leading-7 text-muted">
                     {question.answer}
                   </p>
                 </details>
               ))}
             </div>
           </section>
+          </StepSection>
+
+          <StepSection id="browsers" number="02" icon={Fingerprint} title="指纹浏览器" description="集中记录浏览器窗口、代理与邮箱，并通过返利网记录查看注册分布。">
+            <h3 className="text-base font-semibold">从比特浏览器直接导入</h3>
+            <ol className="space-y-3">
+              <Instruction number={1}>在比特浏览器中导出窗口信息表格，可直接用该表格导入，无需重新制作模板。请选择 .xlsx 格式，文件不超过 5 MB，保留「序号」「ID」「窗口名称」列；「代理信息」可留空。</Instruction>
+              <Instruction number={2}>进入「指纹浏览器」，点击「导入 Excel」选择文件。系统先读取预览，此时不会修改现有数据；核对数量及序号、ID、窗口名称和代理信息。</Instruction>
+              <Instruction number={3}>确认无误后，勾选「我已核对预览，确认全部替换现有指纹浏览器信息」，再点击「确认导入并全部替换」。预览只显示前 50 行，确认后会导入全部有效行。</Instruction>
+            </ol>
+            <div className="rounded-xl border border-warning-line bg-warning-surface p-4 text-[15px] leading-7 text-warning-ink"><strong>导入是全部替换。</strong>表格中没有的浏览器会被删除，相关返利网记录保留并解除浏览器关联；相同 ID 的浏览器保留关联。请导出需要保留的完整窗口列表，并核对重复 ID、重复序号等报错后再导入。</div>
+            <h3 className="text-base font-semibold">新增、编辑、查询和删除</h3>
+            <ol className="space-y-3">
+              <Instruction number={1}>点击「新增指纹浏览器」，填写必填的序号、ID、窗口名称，按需填写代理信息，并勾选关联邮箱，点击「保存信息」。邮箱选项与返利网页面共用，包含「未知」邮箱。</Instruction>
+              <Instruction number={2}>使用搜索框按序号、ID、窗口名称、代理或邮箱查找，翻页查看列表；点击行内编辑按钮修改信息。删除浏览器前核对窗口名称和序号，确认后相关返利网记录仍保留，但浏览器关联会解除。</Instruction>
+              <Instruction number={3}>在上方「浏览器与返利网热力图」搜索窗口、返利网、邮箱或 Offer。悬停色块查看详情，点击可固定详情并复制。绿色代表正常，红色代表已封号，虚线代表未关联；同一邮箱的多个 Offer 分别展示。热力图有独立搜索，不受下方列表搜索和分页影响。</Instruction>
+            </ol>
+            <figure className="rounded-xl border border-accent-line bg-accent-muted/50 p-4">
+              <figcaption className="mb-3 text-base font-semibold text-accent">指纹浏览器与返利网如何关联</figcaption>
+              <div className="grid items-center gap-3 text-center text-sm sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
+                <div className="rounded-lg border border-line bg-surface p-3">指纹浏览器窗口<br /><span className="text-subtle">同一窗口的 ID 与序号</span></div>
+                <span className="text-accent" aria-hidden="true">←</span>
+                <div className="rounded-lg border border-line bg-surface p-3">返利网记录<br /><span className="text-subtle">选择一个浏览器和一个邮箱</span></div>
+                <span className="text-accent" aria-hidden="true">→</span>
+                <div className="rounded-lg border border-line bg-surface p-3">邮箱<br /><span className="text-subtle">已绑定或「未知」邮箱</span></div>
+              </div>
+              <p className="mt-3 text-[15px] leading-7 text-body">例如：在邮箱 A 的返利网记录里选择窗口 001，该记录就会出现在窗口 001 对应返利网的热力图中，邮箱 A 也会显示在该浏览器的关联邮箱中。一个窗口可关联多个邮箱和多条返利网记录。</p>
+              <p className="mt-2 text-[15px] leading-7 text-muted">在浏览器编辑框中单独勾选邮箱，只建立窗口与邮箱的关联，不会自动新增返利网记录。要展示网站、Offer、密码和封户状态，请到「返利网」新增或编辑记录并选择浏览器。</p>
+            </figure>
+          </StepSection>
+
+          <StepSection id="rebates" number="03" icon={ChartNoAxesCombined} title="返利网" description="每条记录对应一个邮箱、返利网与 Offer，可选关联一个指纹浏览器。">
+            <ol className="space-y-3">
+              <Instruction number={1}>进入「返利网」，点击「新增记录」。搜索并选择已绑定邮箱，也可直接输入新邮箱地址；未绑定的地址自动标为「未知」，可用于记账，无需先授权邮箱。</Instruction>
+              <Instruction number={2}>填写返利网名称、域名、创建时间、Offer 和可选的登录密码。名称、域名和 Offer 可从「选择已用」中搜索选择，也可输入新值。密码支持显示和隐藏；编辑时清空密码再保存可删除原密码。</Instruction>
+              <Instruction number={3}>在「关联指纹浏览器」搜索并选择 ID 或序号，另一项会自动对应同一窗口，不能手动填写。找不到时先到「指纹浏览器」新增或导入；也可留空。保存后，明细显示窗口 ID 与序号，浏览器页展示对应邮箱和返利网热力图。</Instruction>
+              <Instruction number={4}>填写总收益、总成本、结款周期和 IP，标记是否结款、是否封户后保存。成本单位为 USD，收益也请使用美元。同一邮箱可以保存多个返利网和多个 Offer。</Instruction>
+              <Instruction number={5}>按邮箱、关键词、结款及封户状态筛选，左右滚动明细表查看全部列，翻页或点击编辑、删除。删除记录也会将其收益和成本移出统计；如提示浏览器关联已失效，请重新选择或清空关联后保存。</Instruction>
+            </ol>
+            <h3 className="text-base font-semibold">查看收益、成本与转化</h3>
+            <p className="text-[15px] leading-7 text-muted">顶部图表统计筛选后的全部记录，不受明细分页影响。已封户记录只计成本、不计收益；收益图浅红色表示未收款，绿色表示已收款，明细保留原始录入金额。转化按「成本:收益」约分，近似倍数为收益 ÷ 成本，成本为零时显示 —；整体转化按汇总金额计算。</p>
+            <h3 className="text-base font-semibold">从 Google Ads 刷新预算</h3>
+            <ol className="space-y-3">
+              <Instruction number={1}>先在「系统设置 → 工作区设置」保存 Google Ads 经理号、API 版本和服务账号 JSON，并确认服务账号有目标 Ads 账号的访问权限。将返利网记录中的 Offer 名称与 Google Ads 广告系列名称保持一致。</Instruction>
+              <Instruction number={2}>点击「刷新预算」，系统汇总同名广告系列的累计实际消费（USD），按关联邮箱平均分配；同一邮箱存在多条同名 Offer 记录时，再均分到记录。</Instruction>
+              <Instruction number={3}>查看更新数量和未更新原因，按提示修正配置或 Offer 名称。未更新的 Offer 保留原成本。</Instruction>
+            </ol>
+            <div className="rounded-xl border border-warning-line bg-warning-surface p-4 text-[15px] leading-7 text-warning-ink">「刷新预算」会覆盖并保存成本，处理当前工作区的全部 Offer，不受当前筛选或分页影响。操作前请核对 Offer 名称与现有成本。</div>
+          </StepSection>
+
+          <StepSection id="workspaces" number="04" icon={Building2} title="工作区" description="每个工作区独立保存邮箱、指纹浏览器、返利网记录和连接配置。">
+            <ol className="space-y-3">
+              <Instruction number={1}>用页面顶部的工作区选择框切换，操作前确认当前名称。绑定邮箱、导入浏览器和保存返利网记录都会作用于当前工作区。</Instruction>
+              <Instruction number={2}>进入「工作区管理」，在「新建工作区」填写名称，点击「创建并进入」。新工作区从空白开始，你成为所有者，原工作区的数据和凭据不会自动复制。</Instruction>
+              <Instruction number={3}>所有者可在「当前工作区」修改名称并点击「保存名称」。在「工作区成员」输入已有平台账号的用户名，选择「成员」或「所有者」，点击「添加成员」。</Instruction>
+              <Instruction number={4}>在成员列表中修改角色或移除成员。成员可使用工作区业务功能，所有者还可维护名称、成员和工作区设置。平台管理员有管理权限，可访问所有工作区。</Instruction>
+              <Instruction number={5}>需要新登录账号时，由平台管理员在「创建平台账号」填写用户名与至少 12 位的初始密码，点击「创建账号」，再将该账号添加为目标工作区成员。平台账号与绑定的邮箱账号是不同用途。</Instruction>
+            </ol>
+            <p className="text-[15px] leading-7 text-muted">备份与迁移时保存整个数据目录、对应配置及原 TOKEN_ENCRYPTION_KEY。工作区设置和 Google Ads JSON 加密保存在平台目录库中，只复制某个工作区的业务数据库不能完成完整恢复。</p>
+          </StepSection>
+
+          <StepSection id="settings" number="05" icon={Settings} title="系统设置" description="区分当前工作区的连接配置、管理员的平台配置和个人登录密码。">
+            <h3 className="text-base font-semibold">工作区设置</h3>
+            <ol className="space-y-3">
+              <Instruction number={1}>先确认顶部工作区，再进入「系统设置」。普通成员可查看，工作区所有者可修改；平台管理员可切换「工作区设置」与「平台设置」。</Instruction>
+              <Instruction number={2}>按需修改 Zoho 请求间隔（至少 2100 毫秒）、Microsoft 账户类型或租户、Google Ads 经理号、API 版本及服务账号 JSON。旧版 Zoho 应用编号和密钥用于兼容旧授权，新邮箱的 Client ID 和 Client Secret 在绑定时填写。</Instruction>
+              <Instruction number={3}>点击「保存设置」，当前工作区后续操作即使用新配置，无需重启服务。「撤销修改」放弃未保存内容，「重新读取」重新加载已保存配置；如提示设置已被修改，重新读取并核对后再保存。</Instruction>
+            </ol>
+            <div className="rounded-xl border border-accent-line bg-accent-muted/50 p-4 text-[15px] leading-7 text-body">
+              <p><strong>Google Ads 服务账号 JSON 就是脚本的 credentials.json。</strong></p>
+              <p className="mt-2">打开脚本使用的 credentials.json，将完整 JSON 内容粘贴到「Google Ads 服务账号 JSON」（ADS_CREDENTIALS_JSON）中，填写的是文件内容，不是文件名或路径。经理号填写 10 位数字，API 版本按页面提供的版本及实际可用版本填写。</p>
+              <p className="mt-2">JSON 按工作区独立加密保存，不会为每个工作区生成 credentials.json 文件。保存后不回显原值；密码、密钥和凭证 JSON 留空均保留原值。旧版外部 credentials.json 若已导入默认工作区，之后替换该文件不会覆盖工作区已保存的 JSON，应在此重新粘贴保存。</p>
+            </div>
+            <h3 className="text-base font-semibold">平台设置（平台管理员）</h3>
+            <p className="text-[15px] leading-7 text-muted">点击「平台设置」查看运行模式、端口、回调地址等服务环境配置，按实际部署修改可编辑项后「保存设置」，再重启 ZoHome 生效。只读项不能在页面修改；TOKEN_ENCRYPTION_KEY 用于解密已有数据，恢复或迁移时必须保留原值。</p>
+            <h3 className="text-base font-semibold">修改个人登录密码</h3>
+            <ol className="space-y-3">
+              <Instruction number={1}>在页面下方「账号密码」输入当前密码、新密码和确认密码；新密码至少 12 位，两次输入保持一致。</Instruction>
+              <Instruction number={2}>点击「修改密码并重新登录」。所有设备上的登录会话都会失效，使用新密码重新登录；修改的是平台登录密码。</Instruction>
+            </ol>
+          </StepSection>
         </div>
 
         <aside aria-label="使用提示" className="space-y-5 xl:sticky xl:top-20">
@@ -539,7 +567,7 @@ export default function GuidePage() {
             <div className="mb-5 flex size-10 items-center justify-center rounded-xl bg-white/10 text-lime-soft">
               <Sparkles className="size-5" aria-hidden="true" />
             </div>
-            <p className="text-[10px] font-medium tracking-[0.16em] text-brand-200 uppercase">
+            <p className="text-[12px] font-medium tracking-[0.16em] text-brand-200 uppercase">
               A GOOD PLACE TO START
             </p>
             <h2 className="mt-3 text-lg leading-8 font-medium">
@@ -547,12 +575,12 @@ export default function GuidePage() {
               <br />
               从一个邮箱开始。
             </h2>
-            <p className="mt-3 text-xs leading-7 text-brand-200">
+            <p className="mt-3 text-[15px] leading-7 text-brand-200">
               先用少量真实账号验证授权、读信与发件，再逐步扩大接入范围。
             </p>
             <a
               href="#connect"
-              className="mt-5 inline-flex items-center gap-2 text-xs font-medium text-lime-soft"
+              className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-lime-soft"
             >
               查看连接步骤 <ArrowDown className="size-3.5" aria-hidden="true" />
             </a>
@@ -562,14 +590,14 @@ export default function GuidePage() {
             <h2 className="section-title">使用前的小检查</h2>
             <ul className="mt-4 space-y-4">
               {[
-                '确认当前是演示模式还是真实模式',
+                '确认顶部选中的工作区和运行模式',
                 '确认选中的邮箱地址和连接状态',
                 '发送前检查发件账号与收件人',
-                '遇到频率限制时，等待后再刷新',
+                '导入前核对全部替换的范围',
               ].map((item) => (
                 <li
                   key={item}
-                  className="flex items-start gap-2.5 text-xs leading-6 text-muted"
+                  className="flex items-start gap-2.5 text-[15px] leading-7 text-muted"
                 >
                   <MailCheck
                     className="mt-1 size-3.5 shrink-0 text-brand-500"
@@ -592,10 +620,10 @@ export default function GuidePage() {
               aria-hidden="true"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-body">
+              <p className="text-sm font-medium text-body">
                 Zoho Mail 官方文档
               </p>
-              <p className="mt-1 text-[11px] leading-5 text-subtle">
+              <p className="mt-1 text-[13px] leading-5 text-subtle">
                 了解接口能力与授权说明
               </p>
             </div>

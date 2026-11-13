@@ -127,7 +127,7 @@ export function WorkspaceProvider({
       {children}
       {notification && (
         <div
-          className="fixed right-5 bottom-6 z-[80] max-w-sm animate-fade-in rounded-xl border border-brand-200 bg-brand-800 px-5 py-3 text-xs leading-6 text-white shadow-xl"
+          className="fixed right-5 bottom-6 z-[80] max-w-sm animate-fade-in rounded-xl border border-brand-200 bg-brand-800 px-5 py-3 text-sm leading-6 text-white shadow-xl"
           role="status"
         >
           {notification}

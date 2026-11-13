@@ -112,12 +112,12 @@ function AccountSelect({
         ))}
       </select>
       {matching.length > 100 && (
-        <p className="mt-1.5 text-[10px] text-subtle">
+        <p className="mt-1.5 text-[12px] text-subtle">
           匹配 {matching.length} 个，显示前 100 个；继续输入可缩小范围。
         </p>
       )}
       {search && matching.length === 0 && (
-        <p className="mt-1.5 text-[10px] text-subtle">
+        <p className="mt-1.5 text-[12px] text-subtle">
           没有匹配的邮箱{selected ? '，当前选择已保留' : ''}。
         </p>
       )}
@@ -165,7 +165,7 @@ function RebateEmailField({ accounts, value, onChange, disabled, keepUnknown = f
           </option>
         ))}
       </datalist>
-      <div className="mt-2 flex items-start gap-2 text-[10px] leading-5 text-subtle">
+      <div className="mt-2 flex items-start gap-2 text-[12px] leading-5 text-subtle">
         {unknown && <span className="badge-muted">未知</span>}
         <p>{unknown
           ? '此邮箱仅保存在返利网记录中，不会加入邮箱账号或邮件页面。'
@@ -198,10 +198,10 @@ function FingerprintBrowserFields({ browsers, value, onChange, disabled, loading
   return (
     <div className="space-y-3 rounded-xl border border-line bg-surface-muted p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-medium text-ink">关联指纹浏览器（选填）</p>
-        <Link to="/fingerprint-browsers" className="text-[11px] text-accent hover:underline">管理指纹浏览器</Link>
+        <p className="text-sm font-medium text-ink">关联指纹浏览器（选填）</p>
+        <Link to="/fingerprint-browsers" className="text-[13px] text-accent hover:underline">管理指纹浏览器</Link>
       </div>
-      <p className="text-[10px] leading-5 text-subtle">选择 ID 或序号会自动对应同一指纹浏览器，不能手动填写。留空则不关联。</p>
+      <p className="text-[12px] leading-5 text-subtle">选择 ID 或序号会自动对应同一指纹浏览器，不能手动填写。留空则不关联。</p>
       <div className="search-field">
         <Search size={14} aria-hidden="true" />
         <input
@@ -240,19 +240,19 @@ function FingerprintBrowserFields({ browsers, value, onChange, disabled, loading
           </div>
         ))}
       </div>
-      {selected && <p className="text-[10px] leading-5 text-muted">已选窗口：{selected.windowName} · ID {selected.browserId} · 序号 {selected.serialNumber}</p>}
-      {loading && <p className="text-[10px] text-subtle" role="status">正在读取指纹浏览器选项…</p>}
+      {selected && <p className="text-[12px] leading-5 text-muted">已选窗口：{selected.windowName} · ID {selected.browserId} · 序号 {selected.serialNumber}</p>}
+      {loading && <p className="text-[12px] text-subtle" role="status">正在读取指纹浏览器选项…</p>}
       {unavailable && <ErrorNotice message="原关联指纹浏览器已被删除或替换，请重新选择或清空关联后保存。" />}
       {error && (
         <div className="space-y-2">
           <ErrorNotice message={`指纹浏览器选项加载失败：${error}`} />
-          <p className="text-[10px] leading-5 text-subtle">已有选择需重新核对后才能保存；清空关联可继续保存返利记录。</p>
+          <p className="text-[12px] leading-5 text-subtle">已有选择需重新核对后才能保存；清空关联可继续保存返利记录。</p>
           <button type="button" className="btn-quiet" onClick={onRetry} disabled={disabled}><RefreshCw size={12} />重新读取指纹浏览器</button>
         </div>
       )}
-      {!loading && !error && browsers.length === 0 && <p className="text-[10px] leading-5 text-subtle">暂无指纹浏览器，可先到管理页新增或导入，也可暂不关联。</p>}
-      {search && matching.length === 0 && browsers.length > 0 && <p className="text-[10px] text-subtle">没有匹配的指纹浏览器{selected ? '，当前关联已保留' : ''}。</p>}
-      {matching.length > 100 && <p className="text-[10px] text-subtle">匹配 {matching.length} 个，显示前 100 个；继续输入可缩小范围。</p>}
+      {!loading && !error && browsers.length === 0 && <p className="text-[12px] leading-5 text-subtle">暂无指纹浏览器，可先到管理页新增或导入，也可暂不关联。</p>}
+      {search && matching.length === 0 && browsers.length > 0 && <p className="text-[12px] text-subtle">没有匹配的指纹浏览器{selected ? '，当前关联已保留' : ''}。</p>}
+      {matching.length > 100 && <p className="text-[12px] text-subtle">匹配 {matching.length} 个，显示前 100 个；继续输入可缩小范围。</p>}
     </div>
   );
 }
@@ -300,7 +300,7 @@ function SavedValueField({
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
         <label
-          className="text-xs font-medium text-body"
+          className="text-sm font-medium text-body"
           htmlFor={`${id}-input`}
         >
           {label}
@@ -308,7 +308,7 @@ function SavedValueField({
         </label>
         <button
           type="button"
-          className="btn-quiet px-1 py-0 text-[10px]"
+          className="btn-quiet px-1 py-0 text-[12px]"
           aria-expanded={open}
           aria-controls={`${id}-choices`}
           onClick={() => setOpen((current) => !current)}
@@ -391,7 +391,7 @@ function SavedValueField({
             </button>
           </div>
           {matching.length > 80 && (
-            <p className="mt-1.5 text-[10px] text-subtle">
+            <p className="mt-1.5 text-[12px] text-subtle">
               匹配 {matching.length} 项，显示前 80 项；输入可缩小范围。
             </p>
           )}
@@ -767,11 +767,11 @@ export default function RebatesPage() {
         }
       />
 
-      <p id="cost-refresh-description" className="mb-4 text-[11px] leading-6 text-muted">
+      <p id="cost-refresh-description" className="mb-4 text-[13px] leading-6 text-muted">
         刷新预算会按广告系列名称匹配全部 Offer，汇总同名广告系列的累计实际消费（美元 USD），按关联邮箱平均分配后覆盖并保存成本；同一邮箱有多条同名 Offer 记录时再均分，不受当前筛选或分页影响。
       </p>
       {refreshingCosts && (
-        <p className="mb-4 text-xs text-muted" role="status">
+        <p className="mb-4 text-sm text-muted" role="status">
           正在读取 Google Ads 消费并保存成本，请稍候…
         </p>
       )}
@@ -781,13 +781,13 @@ export default function RebatesPage() {
         </div>
       )}
       {costRefreshResult && (
-        <div className="panel mb-5 p-4 text-xs leading-6 text-body" role="status">
+        <div className="panel mb-5 p-4 text-sm leading-6 text-body" role="status">
           <p>
             {costRefreshResult.issues.length ? '成本刷新已完成，部分 Offer 未更新。' : '成本刷新已完成。'}
             {' '}已更新 {costRefreshResult.updatedOffers} / {costRefreshResult.totalOffers} 个 Offer、
             {costRefreshResult.updatedRecords} 条记录，单位为美元（USD）。
           </p>
-          <p className="text-[11px] text-muted">
+          <p className="text-[13px] text-muted">
             刷新时间：{new Date(costRefreshResult.refreshedAt).toLocaleString('zh-CN', { hour12: false })}
           </p>
           {costRefreshResult.issues.length > 0 && (
@@ -807,7 +807,7 @@ export default function RebatesPage() {
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[13px] text-muted">
         <p>
           当前筛选 ·{' '}
           <b className="font-medium text-ink">
@@ -837,11 +837,11 @@ export default function RebatesPage() {
           <RebateOverview data={data} loading={loading} />
         </Suspense>
       )}
-      <p className="mb-2 text-[11px] leading-6 text-subtle">
+      <p className="mb-2 text-[13px] leading-6 text-subtle">
         转化按“成本:收益”自动约分，例如 20:400 显示 1:20，并显示归一至成本为 1
         后的近似值；图中转化倍数为收益 ÷ 成本，越高表示每份成本对应的收益越多；成本为 0 时倍数为 —。整体转化按汇总金额计算。
       </p>
-      <p className="mb-7 text-[11px] leading-6 text-muted">
+      <p className="mb-7 text-[13px] leading-6 text-muted">
         已封户记录仅计成本，不计收益；明细保留录入金额。
       </p>
 
@@ -925,7 +925,7 @@ export default function RebatesPage() {
         {loading ? (
           <Spinner label="正在加载注册记录" />
         ) : loadError ? (
-          <div className="p-6 text-center text-xs leading-6 text-muted">
+          <div className="p-6 text-center text-sm leading-6 text-muted">
             记录暂时无法加载，请使用上方的“重新加载”重试。
           </div>
         ) : data?.records.length === 0 ? (
@@ -962,7 +962,7 @@ export default function RebatesPage() {
           />
         ) : (
           <>
-            <p className="border-b border-line-soft px-5 py-2 text-[10px] text-subtle">
+            <p className="border-b border-line-soft px-5 py-2 text-[12px] text-subtle">
               左右滚动可查看全部信息；每条记录对应一个邮箱、返利网与 Offer。
             </p>
             <div
@@ -971,11 +971,11 @@ export default function RebatesPage() {
               role="region"
               aria-label="返利网注册明细表，可左右滚动"
             >
-              <table className="w-full min-w-[2080px] text-left text-[11px]">
+              <table className="data-table w-full min-w-[2080px] text-left">
                 <caption className="sr-only">
                   各邮箱关联的指纹浏览器 ID、序号及注册的返利网、登录密码、Offer、收支、结款、封户和 IP 信息
                 </caption>
-                <thead className="bg-surface-muted text-[10px] font-medium text-muted">
+                <thead className="bg-surface-muted text-[12px] font-medium text-muted">
                   <tr>
                     {[
                       '所属邮箱',
@@ -1018,11 +1018,11 @@ export default function RebatesPage() {
                         <p className="mt-1 break-all text-muted">
                           {record.accountEmail}
                         </p>
-                        <span className="mt-2 inline-block text-[10px] text-subtle">
+                        <span className="mt-2 inline-block text-[12px] text-subtle">
                           {record.accountGroup || '未分组'}
                         </span>
                       </td>
-                      <td className="min-w-36 max-w-48 break-all px-4 py-4 font-mono text-[10px] text-body">
+                      <td className="min-w-36 max-w-48 break-all px-4 py-4 font-mono text-[12px] text-body">
                         {record.fingerprintBrowserExternalId || '—'}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 tabular-nums text-body">
@@ -1056,7 +1056,7 @@ export default function RebatesPage() {
                           record.totalCost,
                           record.totalRevenue,
                         )}
-                        <span className="mt-1 block text-[10px] text-subtle">
+                        <span className="mt-1 block text-[12px] text-subtle">
                           {approximateConversion(
                             record.totalCost,
                             record.totalRevenue,
@@ -1078,14 +1078,14 @@ export default function RebatesPage() {
                         <span
                           className={
                             record.banned
-                              ? 'inline-flex whitespace-nowrap rounded-md bg-danger-surface px-2 py-1 text-[10px] font-medium text-danger-ink'
+                              ? 'inline-flex whitespace-nowrap rounded-md bg-danger-surface px-2 py-1 text-[12px] font-medium text-danger-ink'
                               : 'badge-muted'
                           }
                         >
                           {record.banned ? '已封户' : '未封户'}
                         </span>
                       </td>
-                      <td className="max-w-40 break-all px-4 py-4 font-mono text-[10px] text-muted">
+                      <td className="max-w-40 break-all px-4 py-4 font-mono text-[12px] text-muted">
                         {record.ip || '—'}
                       </td>
                       <td className="sticky right-0 z-20 border-l border-line-soft bg-surface px-4 py-3 group-hover:bg-surface-muted">
@@ -1119,7 +1119,7 @@ export default function RebatesPage() {
                 </tbody>
               </table>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft px-5 py-4 text-[11px] text-muted">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft px-5 py-4 text-[13px] text-muted">
               <p>
                 共 {data?.total || 0} 条 · 第 {filters.page} / {pageCount} 页
               </p>
@@ -1208,7 +1208,7 @@ export default function RebatesPage() {
               previous={editing}
             />
             {optionsLoading && (
-              <p className="text-[10px] text-subtle" role="status">
+              <p className="text-[12px] text-subtle" role="status">
                 正在读取已保存的返利网名称、域名和 Offer…
               </p>
             )}
@@ -1216,7 +1216,7 @@ export default function RebatesPage() {
               <div className="space-y-2">
                 <ErrorNotice message={`已用信息加载失败：${optionsError}`} />
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[10px] text-subtle">
+                  <p className="text-[12px] text-subtle">
                     仍可手动填写，不影响保存记录。
                   </p>
                   <button
@@ -1361,7 +1361,7 @@ export default function RebatesPage() {
                 />
               </label>
             </div>
-            <div className="rounded-xl border border-line bg-surface-muted px-4 py-3 text-xs leading-6 text-muted">
+            <div className="rounded-xl border border-line bg-surface-muted px-4 py-3 text-sm leading-6 text-muted">
               <span>
                 转化（按录入金额）{' '}
                 <b className="ml-2 font-semibold tabular-nums text-ink">
@@ -1371,13 +1371,13 @@ export default function RebatesPage() {
                   )}
                 </b>
               </span>
-              <p className="mt-1 break-all text-[11px] tabular-nums text-muted">
+              <p className="mt-1 break-all text-[13px] tabular-nums text-muted">
                 {approximateConversion(
                   Number(fields.totalCost),
                   Number(fields.totalRevenue),
                 )}
               </p>
-              <p className="mt-1 text-[10px] text-subtle">
+              <p className="mt-1 text-[12px] text-subtle">
                 按成本:收益自动约分，例如 20:400 显示 1:20。成本单位为 USD，收益请使用美元。
               </p>
             </div>
@@ -1406,13 +1406,13 @@ export default function RebatesPage() {
         title="删除返利网记录"
       >
         <div className="px-6 py-5">
-          <p className="text-xs leading-7 text-muted">
+          <p className="text-sm leading-7 text-muted">
             确认删除{' '}
             <b className="font-medium text-ink">{deleting?.accountEmail}</b> 的{' '}
             <b className="font-medium text-ink">{deleting?.siteName}</b>{' '}
             记录？该记录的收益与成本也会从统计中移除。
           </p>
-          <p className="mt-2 text-[11px] text-subtle">删除后无法恢复。</p>
+          <p className="mt-2 text-[13px] text-subtle">删除后无法恢复。</p>
           {deleteError && (
             <div className="mt-4">
               <ErrorNotice message={deleteError} />

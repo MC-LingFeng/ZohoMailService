@@ -308,7 +308,7 @@ export default function MailPage() {
         </div>
       ) : (
         <>
-          <div className="grid items-start gap-4 xl:grid-cols-[240px_minmax(0,1fr)] xl:items-stretch 2xl:grid-cols-[260px_minmax(0,1fr)]">
+          <div className="grid items-start gap-4 xl:grid-cols-[260px_minmax(0,1fr)] xl:items-stretch 2xl:grid-cols-[280px_minmax(0,1fr)]">
             <MailAccountTree
               accounts={accounts}
               selectedId={selectedId}
@@ -323,16 +323,16 @@ export default function MailPage() {
                     small
                   />
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-ink">
+                    <p className="truncate text-sm font-semibold text-ink">
                       {account?.name || account?.email}
                     </p>
-                    <p className="mt-1 truncate text-[10px] text-subtle">
+                    <p className="mt-1 truncate text-[12px] text-subtle">
                       {account?.email}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="hidden text-[10px] text-subtle md:inline">
+                  <span className="hidden text-[12px] text-subtle md:inline">
                     仅刷新当前邮箱
                   </span>
                   <button
@@ -374,7 +374,7 @@ export default function MailPage() {
                       );
                     })}
                   </div>
-                  <p className="px-2 pb-2 text-[10px] text-subtle" role={folderLoading ? 'status' : undefined}>
+                  <p className="px-2 pb-2 text-[12px] text-subtle" role={folderLoading ? 'status' : undefined}>
                     {folderLoading ? '正在读取邮箱文件夹…' : `${folders.length} 个文件夹 · 可左右滚动切换`}
                     <span className="ml-3 hidden sm:inline">{cached ? '缓存内容' : '最近获取'} · {dateLabel(account?.lastSyncedAt || null, true)}</span>
                   </p>
@@ -382,7 +382,7 @@ export default function MailPage() {
                 {currentFolders?.error && (
                   <div className="space-y-2 border-b border-line-soft p-4">
                     <ErrorNotice message={`文件夹列表加载失败：${currentFolders.error}`} />
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-muted">
                       <p>{currentFolders.items.length ? '暂时显示上次读取的文件夹列表。' : '暂时保留收件箱、垃圾邮件和已发送；通知等其他文件夹需重试加载。'}</p>
                       <button className="btn-secondary py-1.5" disabled={folderLoading || syncing} onClick={() => setFolderRevision((value) => value + 1)}>重试加载文件夹</button>
                     </div>
@@ -441,22 +441,22 @@ export default function MailPage() {
                             <span className="block min-w-0 flex-1">
                               <span className="flex items-center justify-between gap-2">
                                 <span
-                                  className={`truncate text-[11px] ${message.isRead ? 'text-body' : 'font-semibold text-ink'}`}
+                                  className={`truncate text-[13px] ${message.isRead ? 'text-body' : 'font-semibold text-ink'}`}
                                 >
                                   {folder === 'sent'
                                     ? message.to
                                     : message.fromName || message.from}
                                 </span>
-                                <time className="shrink-0 text-[9px] text-subtle">
+                                <time className="shrink-0 text-[12px] text-subtle">
                                   {dateLabel(message.receivedAt)}
                                 </time>
                               </span>
                               <span
-                                className={`mt-2 block truncate text-xs ${message.isRead ? 'text-body' : 'font-semibold'}`}
+                                className={`mt-2 block truncate text-sm ${message.isRead ? 'text-body' : 'font-semibold'}`}
                               >
                                 {message.subject || '（无主题）'}
                               </span>
-                              <span className="mt-1.5 block truncate text-[10px] leading-5 text-subtle">
+                              <span className="mt-1.5 block truncate text-[12px] leading-5 text-subtle">
                                 {message.preview || '打开查看邮件内容'}
                               </span>
                               <span className="mt-2 flex h-3 items-center gap-2">
@@ -487,7 +487,7 @@ export default function MailPage() {
                         />
                       )}
                     </div>
-                    <div className="flex items-center justify-between border-t px-4 py-3 text-[10px] text-subtle">
+                    <div className="flex items-center justify-between border-t px-4 py-3 text-[12px] text-subtle">
                       <span>
                         {messages.length
                           ? `第 ${start}–${start + messages.length - 1} 封`
@@ -561,21 +561,21 @@ export default function MailPage() {
                               <div className="my-6 flex items-start gap-3 border-b border-line-soft pb-6">
                                 <Avatar name={detail.fromName || detail.from} />
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-medium break-all">
+                                  <p className="text-sm font-medium break-all">
                                     {detail.fromName || detail.from}
                                   </p>
-                                  <p className="mt-1 text-[10px] leading-5 break-all text-subtle">
+                                  <p className="mt-1 text-[12px] leading-5 break-all text-subtle">
                                     {detail.from}
                                     <br />
                                     发送至 {detail.to}
                                   </p>
                                 </div>
-                                <time className="shrink-0 text-[10px] text-subtle">
+                                <time className="shrink-0 text-[12px] text-subtle">
                                   {dateLabel(detail.receivedAt, true)}
                                 </time>
                               </div>
                               {folder === 'spam' && (
-                                <div className="mb-5 rounded-lg border border-warning-line bg-warning-surface p-3 text-[11px] leading-6 text-warning-ink">
+                                <div className="mb-5 rounded-lg border border-warning-line bg-warning-surface p-3 text-[13px] leading-6 text-warning-ink">
                                   这封邮件位于垃圾邮件中，请谨慎核对其中的链接和内容。
                                 </div>
                               )}
@@ -592,7 +592,7 @@ export default function MailPage() {
                                 </div>
                               )}
                               {detail.hasAttachment && (
-                                <p className="mt-8 flex items-center gap-2 rounded-lg bg-surface-muted p-3 text-[10px] text-muted">
+                                <p className="mt-8 flex items-center gap-2 rounded-lg bg-surface-muted p-3 text-[12px] text-muted">
                                   <Paperclip size={13} />
                                   此邮件包含附件，可前往对应邮箱的网页版下载。
                                 </p>
@@ -607,7 +607,7 @@ export default function MailPage() {
               </section>
             </div>
           </div>
-          <p className="mt-4 flex items-center gap-1.5 text-[10px] leading-5 text-subtle">
+          <p className="mt-4 flex items-center gap-1.5 text-[12px] leading-5 text-subtle">
             <Mail size={12} />
             邮件按账号分页加载；页面不同时轮询全部邮箱。邮件中的远程图片默认不加载。
           </p>

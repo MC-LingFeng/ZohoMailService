@@ -56,7 +56,7 @@ export default function WorkspacesPage() {
     <div className="grid items-start gap-6 xl:grid-cols-2">
       <section className="panel p-5 md:p-6">
         <h2 className="section-title flex items-center gap-2"><Building2 size={17} />当前工作区</h2>
-        <p className="mt-2 text-[11px] text-muted">你的角色：{isOwner ? '所有者' : '成员'}</p>
+        <p className="mt-2 text-[13px] text-muted">你的角色：{isOwner ? '所有者' : '成员'}</p>
         <form className="mt-5 space-y-4" onSubmit={(event) => submit(event, async () => {
           await api(`/workspaces/${encodeURIComponent(workspace.id)}`, { method: 'PATCH', body: JSON.stringify({ name: name.trim() }) });
           await reloadWorkspaces();
@@ -68,7 +68,7 @@ export default function WorkspacesPage() {
       </section>
       <section className="panel p-5 md:p-6">
         <h2 className="section-title flex items-center gap-2"><Plus size={17} />新建工作区</h2>
-        <p className="mt-2 text-[11px] leading-6 text-muted">新工作区从空白开始，你将成为该工作区的所有者。</p>
+        <p className="mt-2 text-[13px] leading-6 text-muted">新工作区从空白开始，你将成为该工作区的所有者。</p>
         <form className="mt-4 space-y-4" onSubmit={(event) => submit(event, async () => {
           const created = await api<WorkspaceSummary>('/workspaces', { method: 'POST', body: JSON.stringify({ name: newName.trim() }) });
           await reloadWorkspaces(created.id);
@@ -81,7 +81,7 @@ export default function WorkspacesPage() {
         <div className="flex items-center justify-between gap-4 border-b border-line-soft p-5 md:px-6"><h2 className="section-title">工作区成员</h2><button type="button" className="icon-button" aria-label="刷新工作区成员" disabled={membersLoading || busy} onClick={() => setMemberRevision((value) => value + 1)}><RefreshCw size={15} /></button></div>
         {membersError && <div className="p-5"><ErrorNotice message={membersError} /></div>}
         {membersLoading ? <Spinner label="正在读取成员" /> : !members.length ? <EmptyState title="暂无成员" description="所有者可以添加已创建的平台账号。" /> : <ul className="divide-y divide-line-soft">{members.map((member) => <li key={member.userId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 md:px-6">
-          <p className="min-w-0 break-all text-xs font-medium">{member.username}{member.userId === status.user?.id && <span className="ml-2 text-[10px] font-normal text-muted">你</span>}</p>
+          <p className="min-w-0 break-all text-sm font-medium">{member.username}{member.userId === status.user?.id && <span className="ml-2 text-[12px] font-normal text-muted">你</span>}</p>
           <div className="flex items-center gap-2">{isOwner ? <select className="input w-auto py-2" aria-label={`${member.username}的工作区角色`} value={member.role} disabled={busy} onChange={(event) => { const nextRole = event.target.value; void run(async () => { await api(`${memberPath}/${encodeURIComponent(member.userId)}`, { method: 'PATCH', body: JSON.stringify({ role: nextRole }) }); await reloadWorkspaces(); setMemberRevision((value) => value + 1); }); }}><option value="member">成员</option><option value="owner">所有者</option></select> : <span className="badge-muted">{member.role === 'owner' ? '所有者' : '成员'}</span>}
             {isOwner && <button type="button" className="icon-button hover:text-danger-ink" aria-label={`移除成员 ${member.username}`} disabled={busy} onClick={() => void run(async () => { await api(`${memberPath}/${encodeURIComponent(member.userId)}`, { method: 'DELETE' }); await reloadWorkspaces(); setMemberRevision((value) => value + 1); })}><Trash2 size={14} /></button>}
           </div>
@@ -94,7 +94,7 @@ export default function WorkspacesPage() {
       </section>}
       {status.user?.isPlatformAdmin && <section className="panel p-5 md:p-6 xl:col-span-2">
         <h2 className="section-title">创建平台账号</h2>
-        <p className="mt-2 text-[11px] leading-6 text-muted">新账号创建后，可将其添加为当前工作区成员。账号不会自动获得其他工作区的访问权限。</p>
+        <p className="mt-2 text-[13px] leading-6 text-muted">新账号创建后，可将其添加为当前工作区成员。账号不会自动获得其他工作区的访问权限。</p>
         <form className="mt-5 grid items-end gap-4 md:grid-cols-[1fr_1fr_auto]" onSubmit={(event) => submit(event, async () => { await api('/users', { method: 'POST', body: JSON.stringify({ username: newUsername.trim(), password: newPassword }) }); setUsername(newUsername.trim()); setNewUsername(''); setNewPassword(''); toast('平台账号已创建，可在上方添加为成员。'); })}>
           <label><span className="field-label">用户名</span><input className="input" value={newUsername} onChange={(event) => setNewUsername(event.target.value)} required maxLength={80} autoComplete="off" disabled={busy} /></label>
           <label><span className="field-label">初始密码（至少 12 位）</span><input className="input" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required minLength={12} maxLength={256} autoComplete="new-password" disabled={busy} /></label>

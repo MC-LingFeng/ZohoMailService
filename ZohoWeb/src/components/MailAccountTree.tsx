@@ -95,7 +95,7 @@ export default function MailAccountTree({
     <aside className="mail-account-tree" aria-label="邮箱账号选择">
       <div className="mail-account-tree-header">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="flex items-center gap-2 text-xs font-semibold">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
             <Folder size={15} className="text-accent" aria-hidden="true" />
             邮箱分组
           </h2>
@@ -124,7 +124,7 @@ export default function MailAccountTree({
           )}
         </div>
         {query && (
-          <p className="mt-2 text-[10px] text-subtle" role="status">
+          <p className="mt-2 text-[12px] text-subtle" role="status">
             找到 {matchCount} 个邮箱
           </p>
         )}
@@ -166,7 +166,7 @@ export default function MailAccountTree({
                     >
                       {group.name}
                     </span>
-                    <span className="text-[10px] font-normal tabular-nums text-subtle">
+                    <span className="text-[12px] font-normal tabular-nums text-subtle">
                       {group.accounts.length}
                     </span>
                   </button>
@@ -200,10 +200,10 @@ export default function MailAccountTree({
                                 aria-hidden="true"
                               />
                               <span className="block min-w-0 flex-1">
-                                <span className="block truncate text-[11px] font-medium">
+                                <span className="block truncate text-[13px] font-medium">
                                   {account.name || account.email}
                                 </span>
-                                <span className="mt-1 block truncate text-[10px] font-normal text-subtle">
+                                <span className="mt-1 block truncate text-[12px] font-normal text-subtle">
                                   {account.email}
                                 </span>
                               </span>
@@ -241,10 +241,10 @@ export default function MailAccountTree({
               className="mx-auto mb-3 text-subtle"
               aria-hidden="true"
             />
-            <p className="text-xs text-body">
+            <p className="text-sm text-body">
               {query ? '没有匹配的邮箱' : '还没有邮箱分组'}
             </p>
-            <p className="mt-2 text-[10px] leading-5 text-subtle">
+            <p className="mt-2 text-[12px] leading-5 text-subtle">
               {query
                 ? '试试其他名称、分组或邮箱地址。'
                 : '添加邮箱后会自动按分组展示。'}
@@ -263,7 +263,7 @@ export default function MailAccountTree({
       </nav>
       {disabled && (
         <p
-          className="shrink-0 border-t border-line-soft px-4 py-3 text-[10px] leading-5 text-subtle"
+          className="shrink-0 border-t border-line-soft px-4 py-3 text-[12px] leading-5 text-subtle"
           role="status"
         >
           当前邮箱正在刷新，完成后即可切换。

@@ -87,7 +87,7 @@ export default function RebateOverview({ data, loading }: {
     ] : [];
     const option: ChartOption = {
       animation: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-      textStyle: { fontFamily, color: muted, fontSize: 11 },
+      textStyle: { fontFamily, color: muted, fontSize: 13 },
       aria: {
         enabled: true,
         label: { description: '合并当前筛选结果中的同名 Offer。柱形展示合计已结款收益、未结款收益和成本，折线展示合计收益除以合计成本的倍数。完整数值见下方对比明细。' },
@@ -95,14 +95,14 @@ export default function RebateOverview({ data, loading }: {
       legend: {
         type: 'scroll', top: 0, left: 0, right: 0,
         itemWidth: 12, itemHeight: 8, itemGap: 18,
-        textStyle: { color: muted, fontFamily, fontSize: 11 },
+        textStyle: { color: muted, fontFamily, fontSize: 13 },
         data: ['已结款收益', '未结款收益', '成本', '转化（收益/成本）'],
       },
       grid: { top: 82, bottom: items.length > visibleCount ? 132 : 96, left: 62, right: 64 },
       tooltip: {
         trigger: 'axis', confine: true, renderMode: 'html', enterable: true,
         backgroundColor: color('surface'), borderColor: line,
-        textStyle: { color: color('ink'), fontFamily, fontSize: 12, lineHeight: 20 },
+        textStyle: { color: color('ink'), fontFamily, fontSize: 14, lineHeight: 24 },
         axisPointer: { type: 'shadow' },
         formatter: (params) => {
           const point = Array.isArray(params) ? params[0] : params;
@@ -132,7 +132,7 @@ export default function RebateOverview({ data, loading }: {
         type: 'category', data: items.map(comparisonKey),
         axisTick: { show: false }, axisLine: { lineStyle: { color: line } },
         axisLabel: {
-          interval: 0, color: muted, fontSize: 10, lineHeight: 17, margin: 14,
+          interval: 0, color: muted, fontSize: 12, lineHeight: 20, margin: 14,
           width: labelWidth(), overflow: 'truncate',
           formatter: (value: string) => {
             // ECharts resets the label index inside the zoomed window.
@@ -202,11 +202,11 @@ export default function RebateOverview({ data, loading }: {
         {cards.map(({ title, value, Icon, color, caption }) => (
           <section className="panel min-w-0 p-5" aria-label={title} key={title}>
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xs font-medium text-muted">{title}</h2>
+              <h2 className="text-sm font-medium text-muted">{title}</h2>
               <Icon size={17} className={color} aria-hidden="true" />
             </div>
             <p className="mt-3 break-all text-2xl font-semibold tracking-tight tabular-nums">{loading ? '—' : value}</p>
-            <p className="mt-2 text-[10px] leading-5 tabular-nums text-subtle">{caption}</p>
+            <p className="mt-2 text-[12px] leading-5 tabular-nums text-subtle">{caption}</p>
           </section>
         ))}
       </div>
@@ -215,9 +215,9 @@ export default function RebateOverview({ data, loading }: {
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 id="offer-comparison-heading" className="section-title">Offer 收益、成本与转化对比</h2>
-            <p className="mt-1.5 text-[11px] leading-6 text-muted">合并当前筛选结果中的同名 Offer，统一汇总收益和成本；转化按合计收益 ÷ 合计成本计算。</p>
+            <p className="mt-1.5 text-[13px] leading-6 text-muted">合并当前筛选结果中的同名 Offer，统一汇总收益和成本；转化按合计收益 ÷ 合计成本计算。</p>
           </div>
-          <label className="flex items-center gap-2 text-[11px] text-muted">
+          <label className="flex items-center gap-2 text-[13px] text-muted">
             排序
             <select className="input w-auto py-2" value={sort} onChange={(event) => setSort(event.target.value as ComparisonSort)}>
               <option value="totalRevenue">收益从高到低</option>
@@ -227,18 +227,18 @@ export default function RebateOverview({ data, loading }: {
           </label>
         </div>
         {loading ? <Spinner label="正在汇总 Offer" /> : items.length === 0 ? (
-          <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-xs text-subtle">
+          <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-sm text-subtle">
             <BarChart3 size={26} strokeWidth={1.2} aria-hidden="true" />
             暂无可对比的 Offer 记录
           </div>
         ) : (
           <>
             <div ref={container} className="h-[440px] w-full sm:h-[460px]" />
-            <p className="mt-2 text-[10px] leading-5 text-subtle">共 {items.length} 个 Offer · 悬浮查看合计收益、成本与转化；拖动底部滑块可查看其余 Offer。左右轴分别为金额与转化倍数。</p>
+            <p className="mt-2 text-[12px] leading-5 text-subtle">共 {items.length} 个 Offer · 悬浮查看合计收益、成本与转化；拖动底部滑块可查看其余 Offer。左右轴分别为金额与转化倍数。</p>
             <details className="mt-4 border-t border-line-soft pt-3">
-              <summary className="cursor-pointer text-xs text-muted">查看全部对比明细（{items.length} 项）</summary>
+              <summary className="cursor-pointer text-sm text-muted">查看全部对比明细（{items.length} 项）</summary>
               <div className="mt-3 overflow-x-auto" tabIndex={0} role="region" aria-label="Offer 汇总对比明细，可左右滚动">
-                <table className="w-full min-w-[760px] text-left text-[11px]">
+                <table className="data-table w-full min-w-[760px] text-left">
                   <caption className="sr-only">当前筛选结果按同名 Offer 合并收益与成本，顺序与图表一致</caption>
                   <thead className="bg-surface-muted text-muted">
                     <tr>{['Offer', '总收益', '已结款 / 未结款', '成本（USD）', '转化（成本:收益）', '记录数'].map((label) => <th className="px-3 py-3 font-medium" key={label}>{label}</th>)}</tr>

@@ -32,7 +32,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
 export function Spinner({ label = '正在加载' }: { label?: string }) {
   return (
     <div
-      className="flex items-center justify-center gap-2 py-12 text-xs text-subtle"
+      className="flex items-center justify-center gap-2 py-12 text-sm text-subtle"
       role="status"
     >
       <LoaderCircle className="animate-spin" size={17} />
@@ -65,7 +65,7 @@ export function EmptyState({
         <Mail size={28} strokeWidth={1.2} />
       </span>
       <h3 className="text-sm font-medium">{title}</h3>
-      <p className="mt-2 max-w-xs text-xs leading-6 text-subtle">
+      <p className="mt-2 max-w-xs text-sm leading-6 text-subtle">
         {description}
       </p>
       {action && <div className="mt-5">{action}</div>}
@@ -146,7 +146,7 @@ export function Avatar({
   const hash = [...name].reduce((sum, letter) => sum + letter.charCodeAt(0), 0);
   return (
     <span
-      className={`flex shrink-0 items-center justify-center rounded-xl font-semibold ${small ? 'size-8 text-[10px]' : 'size-10 text-xs'} ${avatarColors[hash % avatarColors.length]}`}
+      className={`flex shrink-0 items-center justify-center rounded-xl font-semibold ${small ? 'size-8 text-[12px]' : 'size-10 text-sm'} ${avatarColors[hash % avatarColors.length]}`}
     >
       {name.slice(0, 2).toUpperCase()}
     </span>
@@ -186,7 +186,7 @@ export function InlineLink({
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent-hover"
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-hover"
     >
       {children}
       <ArrowRight size={14} />

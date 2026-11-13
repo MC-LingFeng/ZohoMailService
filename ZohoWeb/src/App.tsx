@@ -108,10 +108,10 @@ function Shell() {
             <PanelLeftClose size={18} />
           </button>
         </div>
-        <p className="mt-3 px-1 text-[10px] tracking-[0.08em] text-subtle">
+        <p className="mt-3 px-1 text-[12px] tracking-[0.08em] text-subtle">
           多邮箱，一个家。
         </p>
-        <div className="mt-10 px-3.5 text-[9px] font-medium tracking-[0.16em] text-subtle">
+        <div className="mt-10 px-3.5 text-[12px] font-medium tracking-[0.16em] text-subtle">
           工作空间
         </div>
         <nav aria-label="主导航" className="mt-3 space-y-1.5">
@@ -127,7 +127,7 @@ function Shell() {
               <Icon size={17} strokeWidth={1.7} />
               <span className="flex-1">{label}</span>
               {to === '/accounts' && (
-                <span className="rounded-md bg-surface-hover px-1.5 py-0.5 text-[9px] text-subtle">
+                <span className="rounded-md bg-surface-hover px-1.5 py-0.5 text-[12px] text-subtle">
                   {accounts.length}
                 </span>
               )}
@@ -136,11 +136,11 @@ function Shell() {
         </nav>
         <div className="mt-auto">
           <div className="mb-6 rounded-xl border border-accent-line/80 bg-accent-muted/60 px-4 py-4">
-            <span className="mb-2 flex items-center gap-2 text-[11px] font-medium text-accent">
+            <span className="mb-2 flex items-center gap-2 text-[13px] font-medium text-accent">
               <Sparkles size={14} />
               从容处理每一封邮件
             </span>
-            <p className="text-[10px] leading-5 text-accent/70">
+            <p className="text-[12px] leading-5 text-accent/70">
               一个工作区，连接多个邮箱。
               <br />
               把时间留给更重要的事。
@@ -152,12 +152,12 @@ function Shell() {
             <ChevronRight size={12} className="ml-auto" />
           </Link>
           <div className="mt-5 flex items-center gap-3 border-t border-line-soft px-1 pt-5">
-            <span className="flex size-9 items-center justify-center rounded-full bg-accent-muted text-xs font-semibold text-accent">
+            <span className="flex size-9 items-center justify-center rounded-full bg-accent-muted text-sm font-semibold text-accent">
               ZH
             </span>
             <div className="flex-1">
-              <p className="break-all text-[11px] font-medium">{workspace.name}</p>
-              <p className="mt-1 text-[9px] text-subtle">
+              <p className="break-all text-[13px] font-medium">{workspace.name}</p>
+              <p className="mt-1 text-[12px] text-subtle">
                 {status.user?.username} · {workspace.role === 'owner' ? '所有者' : '成员'}
               </p>
             </div>
@@ -176,9 +176,9 @@ function Shell() {
             >
               <Menu size={20} />
             </button>
-            <label className="min-w-0"><span className="sr-only">切换工作区</span><select className="input max-w-[170px] py-2 text-[11px]" aria-label="切换工作区" value={workspace.id} onChange={(event) => switchWorkspace(event.target.value)}>{workspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+            <label className="min-w-0"><span className="sr-only">切换工作区</span><select className="input max-w-[170px] py-2 text-[13px]" aria-label="切换工作区" value={workspace.id} onChange={(event) => switchWorkspace(event.target.value)}>{workspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
             <ChevronRight size={12} className="hidden text-faint sm:block" />
-            <span className="hidden text-[11px] font-medium text-muted sm:inline">
+            <span className="hidden text-[13px] font-medium text-muted sm:inline">
               {current}
             </span>
           </div>
@@ -191,7 +191,7 @@ function Shell() {
             <span className="hidden h-5 w-px bg-line sm:block" />
             <Link
               to="/guide"
-              className="hidden items-center gap-1.5 text-[11px] text-muted sm:flex"
+              className="hidden items-center gap-1.5 text-[13px] text-muted sm:flex"
             >
               <BookOpen size={14} />
               快速上手
@@ -242,7 +242,7 @@ function Shell() {
             }
           />
         </Routes>
-        <footer className="mx-5 flex flex-wrap items-center justify-between gap-2 border-t border-line/60 py-5 text-[9px] text-subtle md:mx-9">
+        <footer className="mx-5 flex flex-wrap items-center justify-between gap-2 border-t border-line/60 py-5 text-[12px] text-subtle md:mx-9">
           <span>
             ZoHome © {new Date().getFullYear()} · 给每个邮箱，一个家。
           </span>
@@ -292,7 +292,7 @@ function LoginPage({ onLogin }: { onLogin: () => Promise<void> }) {
             <LockKeyhole size={22} strokeWidth={1.6} />
           </span>
           <h1 className="text-xl font-semibold">欢迎回到你的邮箱之家。</h1>
-          <p className="mt-3 text-xs leading-6 text-muted">
+          <p className="mt-3 text-sm leading-6 text-muted">
             使用你的账号登录，进入有权访问的工作区。
           </p>
           <form
@@ -321,11 +321,11 @@ function LoginPage({ onLogin }: { onLogin: () => Promise<void> }) {
               {busy ? '正在验证…' : '进入工作区'}
             </button>
           </form>
-          <p className="mt-6 text-[10px] leading-5 text-subtle">
+          <p className="mt-6 text-[12px] leading-5 text-subtle">
             首次迁移后的管理员用户名为 admin，初始密码沿用原服务端 APP_PASSWORD。其他账号请联系管理员创建。
           </p>
         </div>
-        <p className="mt-6 text-center text-[10px] text-subtle">
+        <p className="mt-6 text-center text-[12px] text-subtle">
           通过邮箱官方授权连接 · 服务端加密保存授权
         </p>
       </div>
@@ -379,7 +379,7 @@ function WorkspaceAccess({ status, reloadStatus }: { status: AppStatus; reloadSt
       <div className="mb-7 flex justify-center"><Logo /></div>
       <div className="panel p-7">
         <h1 className="text-xl font-semibold">{error && !catalog ? '工作区读取失败' : '创建你的第一个工作区'}</h1>
-        <p className="mt-3 text-xs leading-6 text-muted">{status.user?.username}，工作区独立保存邮箱、浏览器、返利网记录及授权配置。</p>
+        <p className="mt-3 text-sm leading-6 text-muted">{status.user?.username}，工作区独立保存邮箱、浏览器、返利网记录及授权配置。</p>
         {error && <div className="mt-5"><ErrorNotice message={error} /></div>}
         {catalog ? <form className="mt-6 space-y-4" onSubmit={(event) => { event.preventDefault(); if (creating || !name.trim()) return; setCreating(true); setError(''); void api<WorkspaceSummary>('/workspaces', { method: 'POST', body: JSON.stringify({ name: name.trim() }) }).then((created) => reloadWorkspaces(created.id)).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : '工作区创建失败')).finally(() => setCreating(false)); }}>
           <label className="block"><span className="field-label">工作区名称</span><input className="input" value={name} onChange={(event) => setName(event.target.value)} required maxLength={80} disabled={creating} placeholder="例如：我的团队" /></label>
@@ -423,7 +423,7 @@ export default function App() {
           <Logo />
           <ServerOff size={30} className="mt-8 text-brand-500" />
           <h1 className="mt-4 text-xl font-semibold">等待工作区服务连接</h1>
-          <p className="mt-3 text-xs leading-7 text-muted">
+          <p className="mt-3 text-sm leading-7 text-muted">
             请重新启动
             ZoHome，并确认控制台显示服务已启动。若使用源码开发，可以在项目根目录运行{' '}
             <code className="rounded bg-surface-hover px-1.5 py-1">

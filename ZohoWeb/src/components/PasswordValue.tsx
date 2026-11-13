@@ -8,7 +8,7 @@ export default function PasswordValue({ value }: { value: string }) {
   if (!value) return <span className="text-subtle">—</span>;
   return (
     <span className="inline-flex max-w-full items-start gap-2">
-      <span className="min-w-0 whitespace-pre-wrap break-all font-mono text-[11px] leading-5 text-body">
+      <span className="min-w-0 whitespace-pre-wrap break-all font-mono text-[13px] leading-5 text-body">
         {visible ? value : '••••••••'}
       </span>
       <button

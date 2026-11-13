@@ -143,7 +143,7 @@ export default function ComposeModal({
           </>
         ) : (
           <div className="space-y-4">
-            <dl className="grid grid-cols-[56px_1fr] gap-x-4 gap-y-3 text-xs">
+            <dl className="grid grid-cols-[56px_1fr] gap-x-4 gap-y-3 text-sm">
               <dt className="text-subtle">发件人</dt>
               <dd className="break-all font-medium text-accent">
                 {sender?.email || '请返回选择账号'}
@@ -153,14 +153,14 @@ export default function ComposeModal({
               <dt className="text-subtle">主题</dt>
               <dd className="break-words">{subject}</dd>
             </dl>
-            <div className="max-h-64 overflow-auto rounded-xl bg-surface-muted p-4 text-xs leading-7 whitespace-pre-wrap">
+            <div className="max-h-64 overflow-auto rounded-xl bg-surface-muted p-4 text-sm leading-7 whitespace-pre-wrap">
               {content}
             </div>
           </div>
         )}
         {error && <ErrorNotice message={error} />}
         <div className="flex items-center justify-between border-t pt-5">
-          <span className="text-[10px] text-subtle">
+          <span className="text-[12px] text-subtle">
             {review ? '请核对发件账号与收件人' : '通过当前选中的邮箱发送'}
           </span>
           <div className="flex gap-2">

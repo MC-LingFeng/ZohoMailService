@@ -25,19 +25,19 @@ function ConfigurationField({ field, changes, disabled, onChange }: {
   const placeholder = field.secret ? field.configured ? '已配置，留空保留原值' : '未配置，按需填写' : '未设置';
   return (
     <div className={multiline ? 'min-w-0 md:col-span-2' : 'min-w-0'}>
-      <label className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-body" htmlFor={id}>
+      <label className="mb-2 flex flex-wrap items-center gap-2 text-sm font-medium text-body" htmlFor={id}>
         {field.label}
         {field.secret && <KeyRound size={12} className="text-subtle" aria-hidden="true" />}
-        {field.readOnly && <span className="text-[10px] font-normal text-subtle">只读</span>}
+        {field.readOnly && <span className="text-[12px] font-normal text-subtle">只读</span>}
       </label>
-      <p className="mb-2 break-all font-mono text-[10px] text-subtle">{field.key}</p>
+      <p className="mb-2 break-all font-mono text-[12px] text-subtle">{field.key}</p>
       {field.key === 'APP_MODE' ? (
         <select id={id} className="input" value={value} disabled={readOnly} onChange={(event) => onChange(field, event.target.value)}>
           <option value="demo">演示模式</option>
           <option value="live">真实邮箱模式</option>
         </select>
       ) : multiline ? (
-        <textarea id={id} className="input min-h-36 resize-y font-mono text-[11px]" value={value} disabled={readOnly} spellCheck={false} autoComplete={field.secret ? 'new-password' : 'off'} placeholder={placeholder} onChange={(event) => onChange(field, event.target.value)} />
+        <textarea id={id} className="input min-h-36 resize-y font-mono text-[13px]" value={value} disabled={readOnly} spellCheck={false} autoComplete={field.secret ? 'new-password' : 'off'} placeholder={placeholder} onChange={(event) => onChange(field, event.target.value)} />
       ) : (
         <input
           id={id}
@@ -54,10 +54,13 @@ function ConfigurationField({ field, changes, disabled, onChange }: {
           onChange={(event) => onChange(field, event.target.value)}
         />
       )}
-      {field.comment && field.comment !== field.label && (
-        <p className="mt-2 whitespace-pre-line break-words text-[10px] leading-5 text-subtle">{field.comment}</p>
+      {field.key === 'ADS_CREDENTIALS_JSON' && (
+        <p className="mt-2 text-[12px] leading-5 text-muted"><strong>Google Ads 服务账号 JSON 就是脚本的 credentials.json。</strong>请粘贴完整 JSON 内容，不是文件名或路径；仅用于当前工作区，加密保存，留空保留原值。</p>
       )}
-      {field.reason && <p className="mt-2 text-[10px] leading-5 text-muted">{field.reason}</p>}
+      {field.comment && field.comment !== field.label && (
+        <p className="mt-2 whitespace-pre-line break-words text-[12px] leading-5 text-subtle">{field.comment}</p>
+      )}
+      {field.reason && <p className="mt-2 text-[12px] leading-5 text-muted">{field.reason}</p>}
     </div>
   );
 }
@@ -139,7 +142,7 @@ function SettingsForm({ scope, canEdit }: { scope: SettingsScope; canEdit: boole
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[11px] leading-6 text-muted">{workspaceScope ? canEdit ? '设置仅作用于当前工作区，保存后生效。' : '你可以查看当前工作区设置；工作区所有者可以修改。' : '平台环境配置由管理员维护，保存后需重启 ZoHome。'}</p>
+        <p className="text-[13px] leading-6 text-muted">{workspaceScope ? canEdit ? '设置仅作用于当前工作区，保存后生效。' : '你可以查看当前工作区设置；工作区所有者可以修改。' : '平台环境配置由管理员维护，保存后需重启 ZoHome。'}</p>
         <button type="button" className="btn-secondary" disabled={loading || saving} onClick={() => setRevision((current) => current + 1)}><RefreshCw size={14} />重新读取</button>
       </div>
       {loading ? <div className="panel"><Spinner label="正在读取配置" /></div> : (
@@ -149,14 +152,14 @@ function SettingsForm({ scope, canEdit }: { scope: SettingsScope; canEdit: boole
               <span className="rounded-lg bg-accent-muted p-2.5 text-accent"><FileSliders size={18} aria-hidden="true" /></span>
               <div className="min-w-0">
                 <h2 className="section-title">{workspaceScope ? '工作区配置' : '平台环境配置'}</h2>
-                {settings && <p className="mt-1.5 break-all text-[11px] text-muted">{settings.fileName} · {settings.fields.length} 项配置</p>}
+                {settings && <p className="mt-1.5 break-all text-[13px] text-muted">{settings.fileName} · {settings.fields.length} 项配置</p>}
               </div>
             </div>
-            <p className="max-w-sm text-[11px] leading-6 text-muted">密码、密钥和凭证 JSON 留空会保留原值。</p>
+            <p className="max-w-sm text-[13px] leading-6 text-muted">密码、密钥和凭证 JSON 留空会保留原值。</p>
           </div>
           {error && <div className="px-5 pt-5 md:px-6"><ErrorNotice message={error} /></div>}
           {!workspaceScope && (settings?.restartRequired || saved) && (
-            <div className="mx-5 mt-5 flex items-start gap-3 rounded-xl border border-warning-line bg-warning-surface p-4 text-xs leading-6 text-warning-ink md:mx-6" role="status">
+            <div className="mx-5 mt-5 flex items-start gap-3 rounded-xl border border-warning-line bg-warning-surface p-4 text-sm leading-6 text-warning-ink md:mx-6" role="status">
               <RotateCcw size={16} className="mt-1 shrink-0" aria-hidden="true" />
               <p>平台配置已保存，请重启 ZoHome 使修改生效。</p>
             </div>
@@ -167,10 +170,10 @@ function SettingsForm({ scope, canEdit }: { scope: SettingsScope; canEdit: boole
               {settings.fields.map((field) => <ConfigurationField key={field.key} field={field} changes={changes} disabled={saving || !canEdit} onChange={change} />)}
             </div>
           ) : (
-            <p className="px-6 py-12 text-center text-xs text-subtle">{settings ? '配置文件中没有可编辑的配置项。' : '暂时无法读取配置，请重新读取。'}</p>
+            <p className="px-6 py-12 text-center text-sm text-subtle">{settings ? '配置文件中没有可编辑的配置项。' : '暂时无法读取配置，请重新读取。'}</p>
           )}
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line-soft px-5 py-4 md:px-6">
-            <p className="text-[11px] text-muted">{!canEdit ? '只读设置' : changeCount ? `已修改 ${changeCount} 项配置` : '没有未保存的修改'}</p>
+            <p className="text-[13px] text-muted">{!canEdit ? '只读设置' : changeCount ? `已修改 ${changeCount} 项配置` : '没有未保存的修改'}</p>
             {canEdit && <div className="flex items-center gap-2">
               <button type="button" className="btn-secondary" disabled={!changeCount || saving} onClick={() => { setChanges({}); setSaved(false); }}>撤销修改</button>
               <button type="submit" className="btn-primary" disabled={!settings || changeCount === 0 || saving}>

@@ -74,7 +74,7 @@ export default function HomePage() {
         {stats.map(({ label, value, icon: Icon, foot, accent }) => (
           <div key={label} className="stat-card">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted">{label}</span>
+              <span className="text-sm text-muted">{label}</span>
               <span
                 className={
                   accent ? 'stat-icon bg-accent-muted text-accent' : 'stat-icon'
@@ -85,18 +85,18 @@ export default function HomePage() {
             </div>
             <div className="mt-3 text-[32px] leading-none font-semibold tracking-tight tabular-nums">
               {value === undefined ? '—' : value.toLocaleString()}
-              <span className="ml-2 text-[11px] font-normal text-subtle">
+              <span className="ml-2 text-[13px] font-normal text-subtle">
                 {label.includes('邮件') || label.includes('发送') ? '封' : '个'}
               </span>
             </div>
-            <p className="mt-3 text-[10px] text-subtle">{foot}</p>
+            <p className="mt-3 text-[12px] text-subtle">{foot}</p>
           </div>
         ))}
       </div>
       <div className="mb-6 grid gap-5 xl:grid-cols-[1.65fr_1fr]">
         <section className="relative isolate overflow-hidden rounded-2xl bg-brand-800 px-7 py-8 text-white md:px-9 md:py-10">
           <div className="relative z-10 max-w-[72%] sm:max-w-[65%]">
-            <span className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-white/15 px-2.5 py-1 text-[9px] tracking-wider text-brand-200">
+            <span className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-white/15 px-2.5 py-1 text-[12px] tracking-wider text-brand-200">
               <span className="size-1.5 rounded-full bg-lime-soft" />
               多邮箱，一个家
             </span>
@@ -105,14 +105,14 @@ export default function HomePage() {
               <br />
               多一点从容专注。
             </h2>
-            <p className="mt-3 max-w-72 text-[11px] leading-6 text-brand-200">
+            <p className="mt-3 max-w-72 text-[13px] leading-6 text-brand-200">
               查看收件箱、查阅垃圾邮件、发送新消息。
               <br className="hidden sm:block" />
               你的邮箱日常，在这里一次完成。
             </p>
             <Link
               to="/accounts"
-              className="mt-6 inline-flex items-center gap-3 rounded-lg bg-lime-soft px-4 py-2.5 text-[11px] font-semibold text-brand-900"
+              className="mt-6 inline-flex items-center gap-3 rounded-lg bg-lime-soft px-4 py-2.5 text-[13px] font-semibold text-brand-900"
             >
               管理我的邮箱
               <ArrowRight size={14} />
@@ -178,10 +178,10 @@ export default function HomePage() {
                 <Icon size={17} strokeWidth={1.6} />
               </span>
               <div className="flex-1">
-                <h3 className="text-xs font-medium group-hover:text-accent">
+                <h3 className="text-sm font-medium group-hover:text-accent">
                   {title}
                 </h3>
-                <p className="mt-1.5 text-[10px] leading-5 text-subtle">
+                <p className="mt-1.5 text-[12px] leading-5 text-subtle">
                   {text}
                 </p>
               </div>
@@ -198,11 +198,11 @@ export default function HomePage() {
           <div className="flex items-center justify-between border-b border-line-soft px-6 py-5">
             <h2 className="section-title">
               最近动态
-              <span className="ml-2 text-[10px] font-normal text-subtle">
+              <span className="ml-2 text-[12px] font-normal text-subtle">
                 {status.mode === 'demo' ? '演示工作区' : '当前工作区'}
               </span>
             </h2>
-            <span className="text-[10px] text-subtle">最近 5 条</span>
+            <span className="text-[12px] text-subtle">最近 5 条</span>
           </div>
           {loading ? (
             <Spinner />
@@ -225,12 +225,12 @@ export default function HomePage() {
                     )}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs">{item.title}</p>
-                    <p className="mt-1 truncate text-[10px] text-subtle">
+                    <p className="truncate text-sm">{item.title}</p>
+                    <p className="mt-1 truncate text-[12px] text-subtle">
                       {item.accountEmail}
                     </p>
                   </div>
-                  <time className="shrink-0 text-[10px] text-subtle">
+                  <time className="shrink-0 text-[12px] text-subtle">
                     {dateLabel(item.createdAt, true)}
                   </time>
                 </div>
@@ -259,10 +259,10 @@ export default function HomePage() {
                   >
                     <Avatar name={account.name || account.email} small />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium">
+                      <p className="truncate text-sm font-medium">
                         {account.name}
                       </p>
-                      <p className="mt-1 truncate text-[10px] text-subtle">
+                      <p className="mt-1 truncate text-[12px] text-subtle">
                         {account.email}
                       </p>
                     </div>
@@ -278,7 +278,7 @@ export default function HomePage() {
                 ))}
               </div>
             ) : (
-              <p className="py-4 text-xs leading-6 text-subtle">
+              <p className="py-4 text-sm leading-6 text-subtle">
                 还没有接入邮箱，从添加一个账号开始吧。
               </p>
             )}
@@ -291,10 +291,10 @@ export default function HomePage() {
               <BookOpen size={21} strokeWidth={1.5} />
             </span>
             <div className="flex-1">
-              <h2 className="text-xs font-medium text-ink">
+              <h2 className="text-sm font-medium text-ink">
                 第一次使用 ZoHome？
               </h2>
-              <p className="mt-1.5 text-[10px] text-muted">
+              <p className="mt-1.5 text-[12px] text-muted">
                 从连接邮箱到发送邮件，几步就上手。
               </p>
             </div>
@@ -305,7 +305,7 @@ export default function HomePage() {
           </Link>
         </div>
       </div>
-      <div className="mt-7 flex items-start gap-2 text-[10px] leading-5 text-subtle">
+      <div className="mt-7 flex items-start gap-2 text-[12px] leading-5 text-subtle">
         <CheckCircle2 size={13} className="mt-1 shrink-0 text-brand-400" />
         <span>
           {status.mode === 'demo'

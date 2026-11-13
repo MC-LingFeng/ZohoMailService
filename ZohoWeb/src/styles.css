@@ -14,22 +14,22 @@
   --color-brand-700: #174f46;
   --color-brand-800: #143f39;
   --color-brand-900: #11342f;
-  --color-canvas: #f7f8fa;
+  --color-canvas: #f1f5f9;
   --color-surface: #ffffff;
-  --color-surface-muted: #f8fafc;
-  --color-surface-hover: #f1f5f9;
-  --color-ink: #202b2a;
-  --color-body: #475569;
-  --color-muted: #64748b;
-  --color-subtle: #94a3b8;
-  --color-faint: #cbd5e1;
-  --color-line: #e2e8f0;
-  --color-line-soft: #f1f5f9;
-  --color-accent: #174f46;
-  --color-accent-muted: #edf5f0;
-  --color-accent-line: #dbece2;
-  --color-accent-hover: #3b7d65;
-  --color-revenue-unsettled: #f2b6b6;
+  --color-surface-muted: #f1f5f9;
+  --color-surface-hover: #e8eef4;
+  --color-ink: #172b27;
+  --color-body: #334155;
+  --color-muted: #526277;
+  --color-subtle: #5f6f82;
+  --color-faint: #a5b4c4;
+  --color-line: #cbd5e1;
+  --color-line-soft: #e2e8f0;
+  --color-accent: #175c48;
+  --color-accent-muted: #dceee5;
+  --color-accent-line: #a8cfbc;
+  --color-accent-hover: #124a3a;
+  --color-revenue-unsettled: #d97882;
   --color-warning-surface: #fffbeb;
   --color-warning-line: #fde68a;
   --color-warning-ink: #b45309;
@@ -38,13 +38,13 @@
   --color-danger-line: #fecaca;
   --color-danger-ink: #dc2626;
   --color-info-surface: #eff6ff;
-  --color-info-ink: #3b82f6;
+  --color-info-ink: #1d4ed8;
   --color-lime-soft: #d8ecb9;
   --color-sand: #e8dcc5;
   --color-leaf: #ecf3e4;
   --color-olive-line: #e5e8dc;
   --color-olive-soft: #f0f2e9;
-  --shadow-panel: 0 2px 10px #183d2f03;
+  --shadow-panel: 0 2px 8px #183d2f0a;
   --animate-fade-in: fade-in 0.25s ease-out;
   @keyframes fade-in {
     from {
@@ -69,12 +69,12 @@
     --color-surface-muted: #1d2a32;
     --color-surface-hover: #26353f;
     --color-ink: #e6efed;
-    --color-body: #c1cdd5;
-    --color-muted: #a6b5bf;
-    --color-subtle: #8497a5;
+    --color-body: #d0dbe2;
+    --color-muted: #b6c5ce;
+    --color-subtle: #a0b2bf;
     --color-faint: #526877;
-    --color-line: #30424d;
-    --color-line-soft: #263640;
+    --color-line: #415562;
+    --color-line-soft: #31444f;
     --color-accent: #9dd6bd;
     --color-accent-muted: #203f35;
     --color-accent-line: #355c4e;
@@ -100,7 +100,7 @@
     @apply scroll-smooth;
   }
   body {
-    @apply m-0 bg-canvas font-sans text-sm text-ink antialiased;
+    @apply m-0 bg-canvas font-sans text-sm leading-relaxed text-ink antialiased;
   }
   button,
   a,
@@ -142,76 +142,80 @@
     @apply flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-700 text-lime-soft;
   }
   .nav-item {
-    @apply flex items-center gap-3 rounded-lg px-3.5 py-3 text-[13px] font-medium text-muted transition-colors hover:bg-surface-muted hover:text-accent;
+    @apply relative flex items-center gap-3 rounded-lg px-3.5 py-3 text-[14px] font-medium text-muted transition-colors hover:bg-surface-muted hover:text-accent;
   }
   .nav-active {
-    @apply bg-accent-muted text-accent hover:bg-accent-muted;
+    @apply bg-accent-muted font-semibold text-accent hover:bg-accent-muted;
+  }
+  .nav-active::before {
+    @apply absolute inset-y-3 left-0 w-1 rounded-full bg-accent;
+    content: "";
   }
   .topbar {
-    @apply flex h-20 items-center justify-between gap-4 border-b border-line/70 bg-surface/80 px-5 backdrop-blur-sm md:px-9;
+    @apply flex h-20 items-center justify-between gap-4 border-b border-line bg-surface px-5 backdrop-blur-sm md:px-9;
   }
   .page-wrap {
     @apply mx-auto max-w-[1480px] animate-fade-in px-5 py-8 md:px-9 md:py-9;
   }
   .page-heading {
-    @apply text-2xl leading-tight font-semibold tracking-tight text-ink md:text-[29px];
+    @apply text-[28px] leading-tight font-semibold tracking-tight text-ink md:text-[30px];
   }
   .page-description {
-    @apply mt-2 text-[13px] leading-6 text-muted;
+    @apply mt-2 text-[14px] leading-6 text-muted;
   }
   .eyebrow {
-    @apply text-[10px] font-semibold tracking-[0.18em] text-subtle uppercase;
+    @apply text-[12px] font-semibold tracking-[0.18em] text-subtle uppercase;
   }
   .section-title {
-    @apply text-[15px] font-semibold text-ink;
+    @apply text-[17px] font-semibold text-ink;
   }
   .panel {
-    @apply rounded-2xl border border-line/80 bg-surface shadow-panel;
+    @apply rounded-2xl border border-line bg-surface shadow-panel;
   }
   .btn-primary {
-    @apply inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-brand-700 bg-brand-700 px-4 py-2.5 text-xs font-medium text-white transition-colors hover:border-brand-800 hover:bg-brand-800 disabled:opacity-50 dark:border-brand-600 dark:bg-brand-600 dark:hover:border-brand-500 dark:hover:bg-brand-500;
+    @apply inline-flex min-h-[42px] shrink-0 items-center justify-center gap-2 rounded-lg border border-brand-700 bg-brand-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:border-brand-800 hover:bg-brand-800 disabled:opacity-50 dark:border-brand-600 dark:bg-brand-600 dark:hover:border-brand-500 dark:hover:bg-brand-500;
   }
   .btn-secondary {
-    @apply inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-line bg-surface px-4 py-2.5 text-xs font-medium text-body transition-colors hover:border-faint hover:bg-surface-muted disabled:opacity-50;
+    @apply inline-flex min-h-[42px] shrink-0 items-center justify-center gap-2 rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-medium text-body transition-colors hover:border-faint hover:bg-surface-muted disabled:opacity-50;
   }
   .btn-quiet {
-    @apply inline-flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface-hover hover:text-accent;
+    @apply inline-flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-accent;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-danger-line bg-danger-surface px-4 py-2.5 text-xs font-medium text-danger-ink hover:bg-danger-hover;
+    @apply inline-flex min-h-[42px] items-center justify-center gap-2 rounded-lg border border-danger-line bg-danger-surface px-4 py-2.5 text-sm font-medium text-danger-ink hover:bg-danger-hover;
   }
   .icon-button {
-    @apply inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-subtle transition-colors hover:bg-surface-hover hover:text-ink;
+    @apply inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-hover hover:text-ink;
   }
   .badge {
-    @apply inline-flex items-center gap-1.5 rounded-md bg-accent-muted px-2 py-1 text-[10px] font-medium text-accent;
+    @apply inline-flex items-center gap-1.5 rounded-md bg-accent-muted px-2 py-1 text-[12px] font-medium text-accent;
   }
   .badge-muted {
-    @apply inline-flex items-center gap-1.5 rounded-md bg-surface-hover px-2 py-1 text-[10px] font-medium text-muted;
+    @apply inline-flex items-center gap-1.5 rounded-md bg-surface-hover px-2 py-1 text-[12px] font-medium text-muted;
   }
   .badge-amber {
-    @apply inline-flex items-center gap-1.5 rounded-md bg-warning-surface px-2 py-1 text-[10px] font-medium text-warning-ink;
+    @apply inline-flex items-center gap-1.5 rounded-md bg-warning-surface px-2 py-1 text-[12px] font-medium text-warning-ink;
   }
   .input {
-    @apply w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-xs leading-5 text-ink placeholder:text-subtle focus:border-accent focus:ring-2 focus:ring-accent-line;
+    @apply min-h-[42px] w-full rounded-lg border border-faint bg-surface px-3 py-2.5 text-sm leading-5 text-ink placeholder:text-subtle focus:border-accent focus:ring-2 focus:ring-accent-line;
   }
   .field-label {
-    @apply mb-2 block text-xs font-medium text-body;
+    @apply mb-2 block text-sm font-medium text-body;
   }
   .search-field {
-    @apply flex items-center gap-2 rounded-lg border border-line bg-surface px-3 text-subtle focus-within:border-accent focus-within:ring-2 focus-within:ring-accent-line;
+    @apply flex min-h-[42px] items-center gap-2 rounded-lg border border-faint bg-surface px-3 text-muted focus-within:border-accent focus-within:ring-2 focus-within:ring-accent-line;
   }
   .search-field input {
-    @apply min-w-0 flex-1 border-0 bg-transparent py-2.5 text-xs text-ink outline-none placeholder:text-subtle focus:ring-0;
+    @apply min-w-0 flex-1 border-0 bg-transparent py-2.5 text-sm text-ink outline-none placeholder:text-subtle focus:ring-0;
   }
   .stat-card {
-    @apply rounded-xl border border-line/80 bg-surface p-5;
+    @apply rounded-xl border border-line bg-surface p-5;
   }
   .stat-icon {
     @apply flex size-9 items-center justify-center rounded-lg bg-surface-muted text-muted;
   }
   .tab {
-    @apply inline-flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 py-3.5 text-xs text-muted transition-colors hover:text-accent;
+    @apply inline-flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 py-3.5 text-sm text-muted transition-colors hover:text-accent;
   }
   .tab-active {
     @apply border-accent font-semibold text-accent;
@@ -220,7 +224,7 @@
     @apply inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-line bg-surface-muted p-0.5;
   }
   .theme-option {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-medium text-muted transition-colors hover:bg-surface-hover hover:text-ink;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] font-medium text-muted transition-colors hover:bg-surface-hover hover:text-ink;
   }
   .theme-option-active {
     @apply bg-surface text-ink shadow-sm hover:bg-surface;
@@ -238,13 +242,39 @@
     @apply mb-5 flex size-16 items-center justify-center rounded-2xl border border-line/70 bg-surface text-brand-400;
   }
   .notice {
-    @apply flex gap-3 rounded-xl border border-accent-line bg-accent-muted/80 px-4 py-3 text-xs leading-6 text-accent;
+    @apply flex gap-3 rounded-xl border border-accent-line bg-accent-muted/80 px-4 py-3 text-sm leading-6 text-accent;
   }
   .error-notice {
-    @apply flex items-start gap-2 rounded-lg border border-danger-line bg-danger-surface px-4 py-3 text-xs leading-5 text-danger-ink;
+    @apply flex items-start gap-2 rounded-lg border border-danger-line bg-danger-surface px-4 py-3 text-sm leading-5 text-danger-ink;
+  }
+  /* Keep dense data legible without changing column widths or sticky positioning. */
+  .data-table {
+    @apply text-sm leading-relaxed;
+  }
+  .data-table thead th {
+    @apply text-[13px] font-semibold text-body;
+  }
+  .data-table tbody tr {
+    @apply transition-colors hover:bg-surface-muted;
+  }
+  /* The table bounds the sticky header, so it leaves with its last window.
+     Do not put an overflow:auto/hidden ancestor around this table: that would
+     make headers stick to that container instead of the page viewport. */
+  .heatmap-table thead th {
+    @apply sticky top-0 z-30 bg-surface-muted shadow-sm;
+  }
+  .heatmap-table thead .browser-serial-cell,
+  .heatmap-table thead .browser-id-cell {
+    @apply z-40;
+  }
+  .browser-serial-cell {
+    @apply sticky left-0 z-10 w-16 min-w-16 max-w-16 whitespace-nowrap;
+  }
+  .browser-id-cell {
+    @apply sticky left-16 z-10 w-[120px] min-w-[120px] max-w-[120px] whitespace-nowrap border-r border-line;
   }
   .email-content {
-    @apply text-[13px] leading-7 break-words text-body;
+    @apply text-[15px] leading-7 break-words text-body;
   }
   .email-content p {
     @apply mb-4;
@@ -259,7 +289,7 @@
     @apply max-w-full;
   }
   .email-content pre {
-    @apply overflow-auto rounded-lg bg-surface-muted p-3 text-xs;
+    @apply overflow-auto rounded-lg bg-surface-muted p-3 text-sm;
   }
 }
 
@@ -273,7 +303,7 @@
 
 @layer components {
   .mail-account-tree {
-    @apply min-w-0 overflow-hidden rounded-2xl border border-line/80 bg-surface shadow-panel xl:flex xl:min-h-0 xl:flex-col xl:self-stretch;
+    @apply min-w-0 overflow-hidden rounded-2xl border border-line bg-surface shadow-panel xl:flex xl:min-h-0 xl:flex-col xl:self-stretch;
   }
   .mail-account-tree-header {
     @apply shrink-0 border-b border-line-soft px-4 py-4;
@@ -282,7 +312,7 @@
     @apply max-h-64 overflow-y-auto overscroll-contain p-2 xl:h-0 xl:min-h-0 xl:max-h-none xl:flex-auto;
   }
   .mail-account-group {
-    @apply flex w-full min-w-0 items-center gap-2 rounded-lg px-2.5 py-3 text-left text-[11px] font-medium text-body transition-colors hover:bg-surface-muted;
+    @apply flex w-full min-w-0 items-center gap-2 rounded-lg px-2.5 py-3 text-left text-[13px] font-medium text-body transition-colors hover:bg-surface-muted;
   }
   .mail-account-children {
     @apply ml-3 space-y-1 border-l border-line-soft py-1 pl-2;
@@ -294,6 +324,6 @@
     @apply border-accent-line bg-accent-muted/80 text-accent hover:bg-accent-muted hover:text-accent;
   }
   .mail-account-unread {
-    @apply rounded bg-surface-hover px-1 text-[9px] font-medium leading-4 tabular-nums text-muted;
+    @apply rounded bg-surface-hover px-1 text-[12px] font-medium leading-4 tabular-nums text-muted;
   }
 }

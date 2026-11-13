@@ -198,11 +198,11 @@ export default function AccountsPage() {
         }
       />
       <div className="mb-6 flex flex-wrap items-center gap-x-7 gap-y-3 rounded-xl border border-line bg-surface px-5 py-4">
-        <span className="flex items-center gap-2 text-xs text-muted">
+        <span className="flex items-center gap-2 text-sm text-muted">
           <Mail size={16} className="text-brand-500" />
           全部邮箱 <b className="text-ink">{accounts.length}</b>
         </span>
-        <span className="flex items-center gap-2 text-xs text-muted">
+        <span className="flex items-center gap-2 text-sm text-muted">
           <span className="size-1.5 rounded-full bg-brand-500" />
           连接正常{' '}
           <b className="text-ink">
@@ -212,11 +212,11 @@ export default function AccountsPage() {
             }
           </b>
         </span>
-        <span className="flex items-center gap-2 text-xs text-muted">
+        <span className="flex items-center gap-2 text-sm text-muted">
           <Folder size={15} className="text-subtle" />
           自定义分组 <b className="text-ink">{groups.length - 1}</b>
         </span>
-        <span className="ml-auto hidden text-[10px] text-subtle sm:block">
+        <span className="ml-auto hidden text-[12px] text-subtle sm:block">
           账号列表分页展示 · 邮件按需加载
         </span>
       </div>
@@ -262,7 +262,7 @@ export default function AccountsPage() {
                 <h2 className="truncate text-sm font-semibold">
                   {account.name || account.email}
                 </h2>
-                <p className="mt-1.5 truncate text-[11px] text-subtle">
+                <p className="mt-1.5 truncate text-[13px] text-subtle">
                   {account.email}
                 </p>
               </div>
@@ -272,7 +272,7 @@ export default function AccountsPage() {
                   {account.group || '未分组'}
                 </span>
                 {account.status === 'connected' ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-accent">
+                  <span className="inline-flex items-center gap-1 text-[12px] text-accent">
                     <CheckCircle2 size={11} />
                     已连接
                   </span>
@@ -285,7 +285,7 @@ export default function AccountsPage() {
                 )}
               </div>
               <div className="mt-5 flex items-center justify-between border-t border-line-soft pt-4">
-                <span className="text-[10px] text-subtle">
+                <span className="text-[12px] text-subtle">
                   {account.unread > 0 ? (
                     <>
                       <b className="font-medium text-accent">
@@ -299,7 +299,7 @@ export default function AccountsPage() {
                 </span>
                 <Link
                   to={`/mail?account=${encodeURIComponent(account.id)}`}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-accent"
+                  className="inline-flex items-center gap-1 text-[13px] font-medium text-accent"
                 >
                   打开邮箱
                   <ArrowRight size={13} />
@@ -340,7 +340,7 @@ export default function AccountsPage() {
           />
         </div>
       )}
-      <div className="mt-5 flex items-center justify-between text-[11px] text-subtle">
+      <div className="mt-5 flex items-center justify-between text-[13px] text-subtle">
         <span>
           共 {filtered.length} 个邮箱
           {filtered.length > 0 &&
@@ -392,7 +392,7 @@ export default function AccountsPage() {
           </span>
           <div>
             <h3 className="text-base font-semibold">为这个邮箱保存应用配置</h3>
-            <p className="mt-2 text-xs leading-6 text-muted">
+            <p className="mt-2 text-sm leading-6 text-muted">
               填写邮箱及对应的 OAuth 应用信息，再前往 {providerNames[bindingProvider]}
               授权。授权成功后，应用配置会与这个邮箱关联保存。
             </p>
@@ -424,7 +424,7 @@ export default function AccountsPage() {
                 <option value="outlook">Outlook / Hotmail / Microsoft 365</option>
               </select>
               {bindingProvider === 'outlook' && (
-                <span className="mt-1.5 block text-[10px] leading-5 text-subtle">
+                <span className="mt-1.5 block text-[12px] leading-5 text-subtle">
                   支持 Microsoft 个人邮箱及 Microsoft 365 工作或学校邮箱，应用须允许对应账号类型登录。
                 </span>
               )}
@@ -442,17 +442,17 @@ export default function AccountsPage() {
                 placeholder={bindingProvider === 'outlook' ? 'name@outlook.com' : 'name@zohomail.com'}
                 autoComplete="off"
               />
-              <span className="mt-1.5 block text-[10px] text-subtle">
+              <span className="mt-1.5 block text-[12px] text-subtle">
                 请填写此账号的主邮箱地址，授权时会核对。
               </span>
             </label>
             {useSavedCredentials ? (
               <div className="rounded-xl border border-accent-line bg-accent-muted/60 p-4">
-                <p className="flex items-center gap-2 text-xs font-medium text-accent">
+                <p className="flex items-center gap-2 text-sm font-medium text-accent">
                   <ShieldCheck size={15} />
                   使用此邮箱已保存的应用配置
                 </p>
-                <p className="mt-2 text-[11px] leading-6 text-muted">
+                <p className="mt-2 text-[13px] leading-6 text-muted">
                   {bindingAccount?.oauthSource === 'legacy'
                     ? '本次使用现有服务端配置完成授权，成功后会与此邮箱关联保存。'
                     : '系统将读取数据库中关联的配置完成授权，无需再次填写密钥。'}
@@ -511,7 +511,7 @@ export default function AccountsPage() {
               </>
             )}
           </fieldset>
-          <div className="rounded-xl bg-surface-muted p-4 text-[11px] leading-6 text-muted">
+          <div className="rounded-xl bg-surface-muted p-4 text-[13px] leading-6 text-muted">
             <p>
               Client Secret
               会加密保存在服务端。多个邮箱可以填写同一组应用信息，也可以各自使用不同的应用。
@@ -532,7 +532,7 @@ export default function AccountsPage() {
                 else closeBinding();
               }}
               aria-disabled={busy}
-              className="text-xs text-accent hover:underline"
+              className="text-sm text-accent hover:underline"
             >
               查看配置与授权步骤
             </Link>
@@ -567,14 +567,14 @@ export default function AccountsPage() {
                   <p className="truncate text-sm font-medium">
                     {editing.email}
                   </p>
-                  <p className="mt-1 text-[10px] text-subtle">
+                  <p className="mt-1 text-[12px] text-subtle">
                     最近同步：{dateLabel(editing.lastSyncedAt, true)}
                   </p>
                 </div>
               </div>
               {disconnecting ? (
                 <div>
-                  <p className="text-xs leading-7 text-muted">
+                  <p className="text-sm leading-7 text-muted">
                     确定从 ZoHome
                     移除这个账号？这会清除本地连接、缓存和关联的返利网记录。Zoho
                     邮箱及其中的邮件不会被删除。如需彻底撤销授权，可在 Zoho
@@ -629,11 +629,11 @@ export default function AccountsPage() {
                     </datalist>
                   </label>
                   <div className="rounded-xl border border-line bg-surface-muted p-4">
-                    <p className="flex items-center gap-2 text-xs font-medium">
+                    <p className="flex items-center gap-2 text-sm font-medium">
                       <KeyRound size={14} className="text-accent" />
                       OAuth 应用配置
                     </p>
-                    <p className="mt-2 text-[11px] leading-6 text-muted">
+                    <p className="mt-2 text-[13px] leading-6 text-muted">
                       {editing.oauthSource === 'account'
                         ? '已为此邮箱单独保存应用配置，密钥以加密形式存储。'
                         : editing.oauthSource === 'legacy'

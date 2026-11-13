@@ -27,7 +27,7 @@ export default function AccountPasswordForm() {
   };
   return <section className="panel mt-6 p-5 md:p-6">
     <h2 className="section-title flex items-center gap-2"><KeyRound size={17} />账号密码</h2>
-    <p className="mt-2 text-[11px] leading-6 text-muted">当前账号：{status.user?.username}。修改密码后，所有设备上的登录会话都会失效，请使用新密码重新登录。</p>
+    <p className="mt-2 text-[13px] leading-6 text-muted">当前账号：{status.user?.username}。修改密码后，所有设备上的登录会话都会失效，请使用新密码重新登录。</p>
     <form className="mt-5 space-y-4" onSubmit={(event) => void save(event)}>
       {error && <ErrorNotice message={error} />}
       <div className="grid gap-4 md:grid-cols-3">

@@ -52,13 +52,14 @@ export default function FingerprintBrowserOverview({ revision }: { revision: num
   }, [data, search]);
 
   return (
-    <section className="panel mb-7 min-w-0" aria-labelledby="fingerprint-overview-heading">
+    // Keep sticky table layers inside the module, below the mobile navigation and backdrop.
+    <section className="panel isolate mb-7 min-w-0" aria-labelledby="fingerprint-overview-heading">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line-soft px-5 py-4">
         <div>
           <h2 id="fingerprint-overview-heading" className="text-sm font-semibold text-ink">浏览器与返利网热力图</h2>
-          <p className="mt-1.5 text-[11px] leading-6 text-muted">按窗口和返利网查看邮箱分布。悬停色块查看 Offer、邮箱和密码，点击色块可固定详情并复制。</p>
+          <p className="mt-1.5 text-[13px] leading-6 text-muted">按窗口和返利网查看邮箱分布。点击 ID 复制完整值；悬停色块查看 Offer、邮箱和密码，点击色块可固定详情并复制。</p>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-subtle">
+        <div className="flex items-center gap-3 text-[13px] text-subtle">
           {data && <span className="tabular-nums">{data.rows.length} 个浏览器 · {data.siteNames.length} 个返利网</span>}
           <button type="button" className="icon-button" aria-label="刷新浏览器与返利网总览" disabled={loading} onClick={() => setReload((value) => value + 1)}>
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -70,9 +71,9 @@ export default function FingerprintBrowserOverview({ revision }: { revision: num
           <Search size={14} aria-hidden="true" />
           <input aria-label="搜索浏览器与返利网总览" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索序号、ID、窗口、返利网、邮箱或 Offer…" />
         </div>
-        <div className="flex flex-wrap items-center gap-4 text-[10px] text-muted" aria-label="热力图图例">
-          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm border border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950" />正常</span>
-          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm border border-rose-300 bg-rose-100 dark:border-rose-700 dark:bg-rose-950" />已封号</span>
+        <div className="flex flex-wrap items-center gap-4 text-[12px] text-muted" aria-label="热力图图例">
+          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm border border-emerald-400 bg-emerald-200 dark:border-emerald-700 dark:bg-emerald-950" />正常</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm border border-rose-400 bg-rose-200 dark:border-rose-700 dark:bg-rose-950" />已封号</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm border border-dashed border-line bg-surface-muted" />未关联</span>
         </div>
       </div>
@@ -83,7 +84,7 @@ export default function FingerprintBrowserOverview({ revision }: { revision: num
               : !visible.rows.length || !visible.siteNames.length ? <EmptyState title="没有匹配的总览信息" description="调整浏览器、返利网或邮箱关键词后再试。" action={<button type="button" className="btn-secondary" onClick={() => setSearch('')}>清空总览搜索</button>} />
                 : <>
                   <FingerprintBrowserHeatmap data={visible} />
-                  <p className="border-t border-line-soft px-5 py-3 text-[10px] leading-5 text-subtle">每个色块对应一条返利网账号记录，同一邮箱的多个 Offer 分别展示。返利网较多时自动分组排布，全部展开，无需在图内滚动。总览不受下方分页与搜索影响。</p>
+                  <p className="border-t border-line-soft px-5 py-3 text-[12px] leading-5 text-subtle">每个色块对应一条返利网账号记录，同一邮箱的多个 Offer 分别展示。模块使用内容区全宽；返利网较多时自动分组排布，全部展开。向下浏览窗口时，表头固定在顶部，离开该组窗口后随表格移出。总览不受下方分页与搜索影响。</p>
                 </>}
     </section>
   );
